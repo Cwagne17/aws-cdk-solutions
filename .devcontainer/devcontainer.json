@@ -1,0 +1,15 @@
+{
+  "name": "AWS CDK Devcontainer",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node",
+  "remoteUser": "vscode",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "amazonwebservices.aws-toolkit-vscode",
+        "visualstudioexptteam.vscodeintellicode",
+        "esbenp.prettier-vscode",
+        "sonarsource.sonarlint-vscode"
+      ]
+    }
+  }
+}
