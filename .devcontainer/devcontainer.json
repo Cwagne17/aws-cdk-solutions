@@ -1,15 +1,27 @@
 {
-  "name": "AWS CDK Devcontainer",
-  "image": "mcr.microsoft.com/devcontainers/typescript-node",
-  "remoteUser": "vscode",
+  "name": "AWS CDK",
+  "image": "mcr.microsoft.com/vscode/devcontainers/base:ubuntu",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "20.0.0"
+    },
+    "ghcr.io/devcontainers/features/aws-cli:1": {},
+    "ghcr.io/devcontainers-contrib/features/aws-cdk:2": {
+      "version": "2.1007.0"
+    }
+  },
+  "postCreateCommand": ".devcontainer/postCreateCommand.sh",
+  "workspaceFolder": "/home/vscode/aws-cdk-solutions",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/home/vscode/aws-cdk-solutions,type=bind",
+  "hostRequirements": {
+    "cpus": 2
+  },
+  "remoteEnv": {
+    "PATH": "${containerEnv:PATH}:/home/vscode/aws-cdk-solutions"
+  },
   "customizations": {
     "vscode": {
-      "extensions": [
-        "amazonwebservices.aws-toolkit-vscode",
-        "visualstudioexptteam.vscodeintellicode",
-        "esbenp.prettier-vscode",
-        "sonarsource.sonarlint-vscode"
-      ]
+      "extensions": ["sonarsource.sonarlint-vscode"]
     }
   }
 }
