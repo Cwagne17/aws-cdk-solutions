@@ -2,7 +2,7 @@
   "name": "aws-cdk-solutions",
   "version": "0.1.0",
   "bin": {
-    "aws-cdk-solutions": "bin/aws-cdk-solutions.js"
+    "aws-cdk-solutions": "bin/bootstrap-developer-environment.js"
   },
   "scripts": {
     "build": "tsc",
