@@ -1,6 +1,25 @@
-export enum Bundles {
-  RHEL8_STANDARD = "wsb-8wthbqzhx",
-}
+import * as cdk from "aws-cdk-lib";
+
+type Mapping = {
+  [k1: string]: {
+    [k2: string]: any;
+  };
+};
+
+export const Bundles: Mapping = {
+  Value: {
+    RHEL8: "tbd",
+    Windows10: "tbd",
+  },
+  Standard: {
+    RHEL8: "wsb-8wthbqzhx",
+    Windows10: "tbd",
+  },
+  Performance: {
+    RHEL8: "tbd",
+    Windows10: "tbd",
+  },
+};
 
 export enum ComputeTypeName {
   VALUE = "VALUE",
