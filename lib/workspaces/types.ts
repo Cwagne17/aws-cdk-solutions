@@ -21,18 +21,16 @@ export const Bundles: Mapping = {
   },
 };
 
-export enum ComputeTypeName {
+export enum OperatingSystem {
+  WINDOWS_10 = "Windows10",
+  RHEL_8 = "RHEL8",
+}
+
+export enum ComputeType {
   VALUE = "VALUE",
   STANDARD = "STANDARD",
   PERFORMANCE = "PERFORMANCE",
   POWER = "POWER",
-  GRAPHICS = "GRAPHICS",
-  POWERPRO = "POWERPRO",
-  GENERALPURPOSE_4XLARGE = "GENERALPURPOSE_4XLARGE",
-  GENERALPURPOSE_8XLARGE = "GENERALPURPOSE_8XLARGE",
-  GRAPHICSPRO = "GRAPHICSPRO",
-  GRAPHICS_G4DN = "GRAPHICS_G4DN",
-  GRAPHICSPRO_G4DN = "GRAPHICSPRO_G4DN",
 }
 
 export enum RunningMode {

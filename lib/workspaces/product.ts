@@ -1,32 +1,46 @@
 import * as cdk from "aws-cdk-lib";
 import * as servicecatalog from "aws-cdk-lib/aws-servicecatalog";
+import * as ssm from "aws-cdk-lib/aws-ssm";
 import * as workspaces from "aws-cdk-lib/aws-workspaces";
 import { Construct } from "constructs";
-import { Bundles, RunningMode } from "./types";
+import { Bundles, ComputeType, OperatingSystem, RunningMode } from "./types";
+import { SSM_PARAM } from "../directory/constants";
 
 export class WorkspacesProduct extends servicecatalog.ProductStack {
   constructor(scope: Construct, id: string) {
     super(scope, id);
 
-    const pEDIPI = new cdk.CfnParameter(this, "pEDIPI", {
+    const pUsername = new cdk.CfnParameter(this, "pUsername", {
       description:
         "The Electronic Data Interchange Personal Identifier, a unique 10-digit number found on the back of your CAC.",
     });
 
+    const directoryId = ssm.StringParameter.valueForTypedStringParameterV2(
+      this,
+      SSM_PARAM.DIRECTORY_ID
+    );
+
     const pDirectoryId = new cdk.CfnParameter(this, "pDirectoryId", {
       description:
         "The microsoft active directory registered with Amazon Workspaces.",
-    });
-
-    const pHardware = new cdk.CfnParameter(this, "pHadware", {
-      description: "The hardware size to provision for your workspace.",
-      allowedValues: ["Value", "Standard", "Performance"],
+      default: directoryId,
     });
 
     const pWorkspaceBundle = new cdk.CfnParameter(this, "pOperatingSystem", {
       description:
         "The workspace operating system that you want to provision as a developer environment.",
-      allowedValues: ["RHEL8", "Windows10"],
+      allowedValues: [OperatingSystem.RHEL_8, OperatingSystem.WINDOWS_10],
+    });
+
+    const pHardware = new cdk.CfnParameter(this, "pHadware", {
+      description: "The hardware size to provision for your workspace.",
+      allowedValues: [
+        ComputeType.VALUE,
+        ComputeType.STANDARD,
+        ComputeType.PERFORMANCE,
+        ComputeType.POWER,
+      ],
+      default: ComputeType.PERFORMANCE,
     });
 
     const mWorkspaceBundlesMapping = new cdk.CfnMapping(
@@ -59,11 +73,11 @@ export class WorkspacesProduct extends servicecatalog.ProductStack {
     const cfnWorkspace = new workspaces.CfnWorkspace(this, "rWorkspace", {
       // Workspace ownership
       directoryId: pDirectoryId.toString(),
-      userName: pEDIPI.toString(),
+      userName: pUsername.toString(),
 
       // Encryption Configuraiton
-      // rootVolumeEncryptionEnabled: true,
-      // userVolumeEncryptionEnabled: true,
+      rootVolumeEncryptionEnabled: true,
+      userVolumeEncryptionEnabled: true,
       // volumeEncryptionKey: symmetricKey.keyId,
 
       // VDI Configurations
@@ -74,6 +88,16 @@ export class WorkspacesProduct extends servicecatalog.ProductStack {
         runningModeAutoStopTimeoutInMinutes: 20,
         userVolumeSizeGib: 100,
       },
+    });
+
+    new cdk.CfnOutput(this, "oBundleId", {
+      key: "BundleId",
+      value: cfnWorkspace.bundleId,
+    });
+
+    new cdk.CfnOutput(this, "oWorkspaceId", {
+      key: "WorkspaceId",
+      value: cfnWorkspace.attrId,
     });
   }
 }

@@ -1,7 +1,8 @@
 import * as cdk from "aws-cdk-lib";
 import * as servicecatalog from "aws-cdk-lib/aws-servicecatalog";
+import * as iam from "aws-cdk-lib/aws-iam";
 import { Construct } from "constructs";
-import { WorkspacesProduct } from "./workspaces";
+import { WorkspacesProduct } from ".";
 
 export class DeveloperWorkspaceProductStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: cdk.StackProps) {
@@ -17,7 +18,13 @@ export class DeveloperWorkspaceProductStack extends cdk.Stack {
       }
     );
 
-    // TODO: Setup portfolio access control
+    // Give the SSO Admin Permission to the portfolio
+    const adminSSORole = iam.Role.fromRoleName(
+      this,
+      "rImportedRole",
+      "AWSReservedSSO_AdministratorAccess_c3b8f24c5741a01a"
+    );
+    portfolio.giveAccessToRole(adminSSORole);
 
     const productStackHistory = new servicecatalog.ProductStackHistory(
       this,

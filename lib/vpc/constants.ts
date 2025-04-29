@@ -1,4 +1,4 @@
-const ssm_param_prefix = "/developer-environment-bootstrap";
+import { ssm_param_prefix } from "../constants";
 
 export const SUBNET_NAMES = {
   ACTIVE_DIRECTORY: "active-directory",

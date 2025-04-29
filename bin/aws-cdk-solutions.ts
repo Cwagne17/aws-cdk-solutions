@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import * as cdk from "aws-cdk-lib";
-import { DeveloperWorkspaceProductStack } from "../lib/developer-workspace-product-stack";
+import { DeveloperWorkspaceProductStack } from "../lib/workspaces/developer-workspace-product-stack";
 import { VpcStack } from "../lib/vpc";
 import { ActiveDirectoryStack } from "../lib/directory/directory-stack";
 
