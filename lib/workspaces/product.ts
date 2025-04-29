@@ -15,15 +15,11 @@ export class WorkspacesProduct extends servicecatalog.ProductStack {
         "The Electronic Data Interchange Personal Identifier, a unique 10-digit number found on the back of your CAC.",
     });
 
-    const directoryId = ssm.StringParameter.valueForTypedStringParameterV2(
-      this,
-      SSM_PARAM.DIRECTORY_ID
-    );
-
     const pDirectoryId = new cdk.CfnParameter(this, "pDirectoryId", {
       description:
         "The microsoft active directory registered with Amazon Workspaces.",
-      default: directoryId,
+      type: "AWS::SSM::Parameter::Value<String>",
+      default: SSM_PARAM.DIRECTORY_ID,
     });
 
     const pWorkspaceBundle = new cdk.CfnParameter(this, "pOperatingSystem", {

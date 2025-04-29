@@ -31,8 +31,8 @@ export class DeveloperWorkspaceProductStack extends cdk.Stack {
       "rWorkspaceProductStackHistory",
       {
         productStack: new WorkspacesProduct(this, "rWorkspaceProduct"),
-        currentVersionName: "v1.0.0-alpha",
-        currentVersionLocked: true,
+        currentVersionName: "v1.0.1-alpha",
+        currentVersionLocked: false,
       }
     );
 
@@ -42,11 +42,7 @@ export class DeveloperWorkspaceProductStack extends cdk.Stack {
       {
         productName: "Private Developer Workspace",
         owner: "Christopher Wagner",
-        productVersions: [
-          productStackHistory.currentVersion(),
-          // TODO: Add previous versions as they change
-          // productStackHistory.versionFromSnapshot("v0.0.1")
-        ],
+        productVersions: [productStackHistory.currentVersion()],
       }
     );
     portfolio.addProduct(product);
