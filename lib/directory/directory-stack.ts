@@ -8,18 +8,18 @@ export class ActiveDirectoryStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    const vpcId = ssm.StringParameter.fromStringParameterName(
+    const vpcId = ssm.StringParameter.valueForTypedStringParameterV2(
       this,
-      "pVpcId",
       SSM_PARAM.VPC_ID
     );
 
     const directorySubnetIds =
-      ssm.StringListParameter.fromStringListParameterName(
+      ssm.StringListParameter.valueForTypedListParameter(
         this,
-        "pDirectorySubnetIds",
         SSM_PARAM.DIRECTORY_SUBNET_IDS
       );
+
+    console.log(directorySubnetIds);
 
     const directory = new directoryservice.CfnMicrosoftAD(
       this,
@@ -29,8 +29,8 @@ export class ActiveDirectoryStack extends cdk.Stack {
         name: "workspace.example.com",
         password: "mockPassword123",
         vpcSettings: {
-          subnetIds: directorySubnetIds.stringListValue,
-          vpcId: vpcId.stringValue,
+          subnetIds: directorySubnetIds,
+          vpcId: vpcId,
         },
       }
     );
