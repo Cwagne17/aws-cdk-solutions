@@ -6,7 +6,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "register-workspace": "npx ts-node scripts/register-workspace-directory.ts",
+    "workspace-directory": "npx ts-node scripts/workspace-directory-registration.ts",
     "watch": "tsc -w",
     "test": "jest",
     "cdk": "cdk"

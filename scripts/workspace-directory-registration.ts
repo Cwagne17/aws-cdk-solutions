@@ -1,8 +1,7 @@
+const arg = require("arg");
 import {
   WorkSpacesClient,
   RegisterWorkspaceDirectoryCommand,
-  UserIdentityType,
-  WorkspaceType,
 } from "@aws-sdk/client-workspaces";
 import { GetParameterCommand, SSMClient } from "@aws-sdk/client-ssm";
 import { SSM_PARAM as DIRECTORY_SSM_PARAM } from "../lib/directory/constants";
@@ -56,9 +55,6 @@ async function registerWorkspaceDirectory() {
       new RegisterWorkspaceDirectoryCommand({
         DirectoryId: directoryId,
         SubnetIds: workspaceSubnetIds.split(",").slice(0, 2),
-        EnableSelfService: true,
-        UserIdentityType: UserIdentityType.AWS_DIRECTORY_SERVICE,
-        WorkspaceType: WorkspaceType.PERSONAL,
       })
     );
     console.log("INFO: Succesfully registered the workspace directory!");
@@ -69,4 +65,67 @@ async function registerWorkspaceDirectory() {
   }
 }
 
-registerWorkspaceDirectory();
+async function deregisterWorkspaceDirectory() {
+  const directoryId = await getParameter(DIRECTORY_SSM_PARAM.DIRECTORY_ID);
+  if (!directoryId) {
+    throw new Error(
+      `ERROR: Directory Id does not exist: ${DIRECTORY_SSM_PARAM.DIRECTORY_ID}`
+    );
+  }
+
+  try {
+    await new WorkSpacesClient({ region }).send(
+      new RegisterWorkspaceDirectoryCommand({
+        DirectoryId: directoryId,
+      })
+    );
+    console.log("INFO: Succesfully deregistered the workspace directory!");
+  } catch (error) {
+    throw new Error(
+      `ERROR: could not deregister the workspace directory: ${error}`
+    );
+  }
+}
+
+const REGISTER = "register";
+const DEREGISTER = "deregister";
+
+function help() {
+  console.log(`
+Workspace Directory Registration Script
+
+This script will register an existing Active Directory instance
+with Amazon Workspaces so that Personal Workspaces can be provisioned
+for users with accounts within the registered directory.
+
+Usage:
+  ts-node workspace-directory-registration.ts --action <action>
+
+  or
+
+  npm run workspace-directory -- --action <action>
+
+Actions:
+  ${REGISTER}    Register the workspace directory with Amazon WorkSpaces.
+  ${DEREGISTER}  Deregister the workspace directory from Amazon Work
+  `);
+}
+
+const args = arg({
+  "--action": String,
+  "-a": "--action",
+});
+const action = args["--action"] ?? REGISTER;
+
+switch (action) {
+  case REGISTER:
+    console.debug("DEBUG: Registering the directory from Workspaces.");
+    registerWorkspaceDirectory();
+    break;
+  case DEREGISTER:
+    console.debug("DEBUG: Deregistering the directory from Workspaces.");
+    deregisterWorkspaceDirectory();
+    break;
+  default:
+    help();
+}
