@@ -1,10 +1,11 @@
+const version = require("../../package.json").version;
 import * as cdk from "aws-cdk-lib";
 import * as servicecatalog from "aws-cdk-lib/aws-servicecatalog";
 import * as iam from "aws-cdk-lib/aws-iam";
 import { Construct } from "constructs";
-import { WorkspacesProduct } from ".";
+import { WorkspacesProductStack } from "./workspaces-product-stack";
 
-export class DeveloperWorkspaceProductStack extends cdk.Stack {
+export class WorkspacesPortfolioStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: cdk.StackProps) {
     super(scope, id, props);
 
@@ -26,12 +27,14 @@ export class DeveloperWorkspaceProductStack extends cdk.Stack {
     );
     portfolio.giveAccessToRole(adminSSORole);
 
+    console.log(version);
+
     const productStackHistory = new servicecatalog.ProductStackHistory(
       this,
       "rWorkspaceProductStackHistory",
       {
-        productStack: new WorkspacesProduct(this, "rWorkspaceProduct"),
-        currentVersionName: "v1.0.1-alpha",
+        productStack: new WorkspacesProductStack(this, "rWorkspaceProduct"),
+        currentVersionName: `v${version}`,
         currentVersionLocked: false,
       }
     );
@@ -45,8 +48,8 @@ export class DeveloperWorkspaceProductStack extends cdk.Stack {
         productVersions: [productStackHistory.currentVersion()],
       }
     );
-    portfolio.addProduct(product);
 
-    // TODO: Setup product access control
+    // Register the product with the portfolio
+    portfolio.addProduct(product);
   }
 }

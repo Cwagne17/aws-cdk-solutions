@@ -1,5 +1,3 @@
-import * as cdk from "aws-cdk-lib";
-
 type Mapping = {
   [k1: string]: {
     [k2: string]: any;

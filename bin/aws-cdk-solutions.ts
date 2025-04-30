@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import * as cdk from "aws-cdk-lib";
-import { DeveloperWorkspaceProductStack } from "../lib/workspaces";
+import { WorkspacesPortfolioStack } from "../lib/workspaces";
 import { VpcStack } from "../lib/vpc";
 import { ActiveDirectoryStack } from "../lib/directory";
 
@@ -19,7 +19,7 @@ const directory = new ActiveDirectoryStack(
   props
 );
 
-new DeveloperWorkspaceProductStack(
+const portfolio = new WorkspacesPortfolioStack(
   app,
   `${projectName}WorkspaceProduct`,
   props
@@ -27,7 +27,10 @@ new DeveloperWorkspaceProductStack(
 
 directory.addDependency(
   vpc,
-  "The Active Directory instance references the SSM params from Vpc to deploy into."
+  "The directory depends on the Vpc SSM params to exist."
 );
 
-console.log("Do something next");
+portfolio.addDependency(
+  directory,
+  "The portfolio depends on the Directory Id SSM param to exist."
+);

@@ -6,7 +6,7 @@ import { Construct } from "constructs";
 import { Bundles, ComputeType, OperatingSystem, RunningMode } from "./types";
 import { SSM_PARAM } from "../directory/constants";
 
-export class WorkspacesProduct extends servicecatalog.ProductStack {
+export class WorkspacesProductStack extends servicecatalog.ProductStack {
   constructor(scope: Construct, id: string) {
     super(scope, id);
 
@@ -18,7 +18,7 @@ export class WorkspacesProduct extends servicecatalog.ProductStack {
     const pDirectoryId = new cdk.CfnParameter(this, "pDirectoryId", {
       description:
         "The microsoft active directory registered with Amazon Workspaces.",
-      type: "AWS::SSM::Parameter::Value<String>",
+      type: "String",
       default: SSM_PARAM.DIRECTORY_ID,
     });
 
@@ -72,8 +72,8 @@ export class WorkspacesProduct extends servicecatalog.ProductStack {
       userName: pUsername.toString(),
 
       // Encryption Configuraiton
-      rootVolumeEncryptionEnabled: true,
-      userVolumeEncryptionEnabled: true,
+      // rootVolumeEncryptionEnabled: true,
+      // userVolumeEncryptionEnabled: true,
       // volumeEncryptionKey: symmetricKey.keyId,
 
       // VDI Configurations
@@ -93,7 +93,7 @@ export class WorkspacesProduct extends servicecatalog.ProductStack {
 
     new cdk.CfnOutput(this, "oWorkspaceId", {
       key: "WorkspaceId",
-      value: cfnWorkspace.attrId,
+      value: cfnWorkspace.ref,
     });
   }
 }
