@@ -11,6 +11,7 @@ import { SSM_PARAM as VPC_SSM_PARAM } from "../lib/vpc";
 const region = process.env.AWS_REGION ?? "us-east-1"; // Default to us-east-1 if not set
 
 function getParameter(parameterName: string): Promise<string | void> {
+  console.debug(`DEBUG: Attempting to get SSM parameter: ${parameterName}`);
   return new SSMClient({ region })
     .send(
       new GetParameterCommand({
@@ -19,10 +20,16 @@ function getParameter(parameterName: string): Promise<string | void> {
     )
     .then(
       (data) => {
+        console.log(
+          `INFO: SSM parameter ${parameterName} found: ${data.Parameter?.Value}`
+        );
         return data.Parameter?.Value;
       },
       (error) => {
-        console.error(`Error getting param ${parameterName}:`, error);
+        console.error(
+          `ERROR: Could not get SSM parameter ${parameterName}:`,
+          error
+        );
       }
     );
 }
@@ -31,7 +38,7 @@ async function registerWorkspaceDirectory() {
   const directoryId = await getParameter(DIRECTORY_SSM_PARAM.DIRECTORY_ID);
   if (!directoryId) {
     throw new Error(
-      `Directory Id does not exist: ${DIRECTORY_SSM_PARAM.DIRECTORY_ID}`
+      `ERROR: Directory Id does not exist: ${DIRECTORY_SSM_PARAM.DIRECTORY_ID}`
     );
   }
 
@@ -40,7 +47,7 @@ async function registerWorkspaceDirectory() {
   );
   if (!workspaceSubnetIds) {
     throw new Error(
-      `Workspace Subnet Ids do not exist: ${VPC_SSM_PARAM.WORKSPACE_SUBNET_IDS}`
+      `ERROR: Workspace Subnet Ids do not exist: ${VPC_SSM_PARAM.WORKSPACE_SUBNET_IDS}`
     );
   }
 
@@ -54,9 +61,11 @@ async function registerWorkspaceDirectory() {
         WorkspaceType: WorkspaceType.PERSONAL,
       })
     );
-    console.log("Succesfully registered the workspace directory!");
+    console.log("INFO: Succesfully registered the workspace directory!");
   } catch (error) {
-    throw new Error(`Error registering the workspace directory: ${error}`);
+    throw new Error(
+      `ERROR: could not register the workspace directory: ${error}`
+    );
   }
 }
 

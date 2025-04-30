@@ -6,6 +6,7 @@
   },
   "scripts": {
     "build": "tsc",
+    "register-workspace": "npx ts-node scripts/register-workspace-directory.ts",
     "watch": "tsc -w",
     "test": "jest",
     "cdk": "cdk"
@@ -22,6 +23,7 @@
   "dependencies": {
     "@aws-sdk/client-ssm": "^3.798.0",
     "@aws-sdk/client-workspaces": "^3.798.0",
+    "@aws-sdk/credential-providers": "^3.799.0",
     "aws-cdk-lib": "2.190.0",
     "constructs": "^10.0.0"
   }
