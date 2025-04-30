@@ -10,16 +10,14 @@ export class WorkspacesProductStack extends servicecatalog.ProductStack {
   constructor(scope: Construct, id: string) {
     super(scope, id);
 
+    const directoryId = ssm.StringParameter.valueForTypedStringParameterV2(
+      this,
+      SSM_PARAM.DIRECTORY_ID
+    );
+
     const pUsername = new cdk.CfnParameter(this, "pUsername", {
       description:
         "The Electronic Data Interchange Personal Identifier, a unique 10-digit number found on the back of your CAC.",
-    });
-
-    const pDirectoryId = new cdk.CfnParameter(this, "pDirectoryId", {
-      description:
-        "The microsoft active directory registered with Amazon Workspaces.",
-      type: "String",
-      default: SSM_PARAM.DIRECTORY_ID,
     });
 
     const pWorkspaceBundle = new cdk.CfnParameter(this, "pOperatingSystem", {
@@ -29,12 +27,13 @@ export class WorkspacesProductStack extends servicecatalog.ProductStack {
     });
 
     const pHardware = new cdk.CfnParameter(this, "pHadware", {
-      description: "The hardware size to provision for your workspace.",
+      description:
+        "The hardware size to provision for your workspace. (vCPU, GB of memory)",
       allowedValues: [
-        ComputeType.VALUE,
-        ComputeType.STANDARD,
-        ComputeType.PERFORMANCE,
-        ComputeType.POWER,
+        `${ComputeType.VALUE} (1 vCPU, 2 GB)`,
+        `${ComputeType.STANDARD} (2 vCPU, 4 GB)`,
+        `${ComputeType.PERFORMANCE} (2 vCPU, 4 GB)`,
+        `${ComputeType.POWER} (4 vCPU, 16 GB)`,
       ],
       default: ComputeType.PERFORMANCE,
     });
@@ -48,7 +47,7 @@ export class WorkspacesProductStack extends servicecatalog.ProductStack {
     );
 
     const bundle = mWorkspaceBundlesMapping.findInMap(
-      pHardware.valueAsString,
+      pHardware.valueAsString.split(" ")[0],
       pWorkspaceBundle.valueAsString
     );
 
@@ -66,9 +65,9 @@ export class WorkspacesProductStack extends servicecatalog.ProductStack {
     // });
 
     // Create a workspace to deploy VDIs into
-    const cfnWorkspace = new workspaces.CfnWorkspace(this, "rWorkspace", {
+    const workspace = new workspaces.CfnWorkspace(this, "rWorkspace", {
       // Workspace ownership
-      directoryId: pDirectoryId.toString(),
+      directoryId: directoryId,
       userName: pUsername.toString(),
 
       // Encryption Configuraiton
@@ -79,21 +78,21 @@ export class WorkspacesProductStack extends servicecatalog.ProductStack {
       // VDI Configurations
       bundleId: bundle,
       workspaceProperties: {
-        rootVolumeSizeGib: 80,
+        // rootVolumeSizeGib: 80,
         runningMode: RunningMode.AUTO_STOP,
         runningModeAutoStopTimeoutInMinutes: 20,
-        userVolumeSizeGib: 100,
+        // userVolumeSizeGib: 100,
       },
     });
 
     new cdk.CfnOutput(this, "oBundleId", {
       key: "BundleId",
-      value: cfnWorkspace.bundleId,
+      value: workspace.bundleId,
     });
 
     new cdk.CfnOutput(this, "oWorkspaceId", {
       key: "WorkspaceId",
-      value: cfnWorkspace.ref,
+      value: workspace.ref,
     });
   }
 }
