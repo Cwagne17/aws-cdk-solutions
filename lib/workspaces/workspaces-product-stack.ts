@@ -30,12 +30,12 @@ export class WorkspacesProductStack extends servicecatalog.ProductStack {
       description:
         "The hardware size to provision for your workspace. (vCPU, GB of memory)",
       allowedValues: [
-        `${ComputeType.VALUE} (1 vCPU, 2 GB)`,
-        `${ComputeType.STANDARD} (2 vCPU, 4 GB)`,
-        `${ComputeType.PERFORMANCE} (2 vCPU, 4 GB)`,
-        `${ComputeType.POWER} (4 vCPU, 16 GB)`,
+        ComputeType.Value,
+        ComputeType.Standard,
+        ComputeType.Performance,
+        ComputeType.Power,
       ],
-      default: ComputeType.PERFORMANCE,
+      default: ComputeType.Performance,
     });
 
     const mWorkspaceBundlesMapping = new cdk.CfnMapping(
@@ -47,7 +47,7 @@ export class WorkspacesProductStack extends servicecatalog.ProductStack {
     );
 
     const bundle = mWorkspaceBundlesMapping.findInMap(
-      pHardware.valueAsString.split(" ")[0],
+      pHardware.valueAsString,
       pWorkspaceBundle.valueAsString
     );
 

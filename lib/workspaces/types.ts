@@ -4,6 +4,18 @@ type Mapping = {
   };
 };
 
+export enum ComputeType {
+  Value = "Value",
+  Standard = "Standard",
+  Performance = "Performance",
+  Power = "Power",
+}
+
+export enum OperatingSystem {
+  WINDOWS_10 = "Windows10",
+  RHEL_8 = "RHEL8",
+}
+
 export const Bundles: Mapping = {
   Value: {
     RHEL8: "tbd",
@@ -18,18 +30,6 @@ export const Bundles: Mapping = {
     Windows10: "tbd",
   },
 };
-
-export enum OperatingSystem {
-  WINDOWS_10 = "Windows10",
-  RHEL_8 = "RHEL8",
-}
-
-export enum ComputeType {
-  VALUE = "VALUE",
-  STANDARD = "STANDARD",
-  PERFORMANCE = "PERFORMANCE",
-  POWER = "POWER",
-}
 
 export enum RunningMode {
   AUTO_STOP = "AUTO_STOP",

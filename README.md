@@ -29,7 +29,7 @@ aws sso login --profile <profile>
 AWS_PROFILE=<profile> cdk deploy --all
 
 # Register the MS Active Directory with Amazon Workspaces
-AWS_PROFILE=<profile> npm run workspace-directory -- --action register
+AWS_PROFILE=<profile> npm run workspace-directory -- register
 ```
 
 ## Teardown
@@ -42,7 +42,7 @@ When you are done running the environment you can destroy the environment with t
 aws sso login --profile <profile>
 
 # Deregister the MS Active Directory with Amazon Workspaces
-AWS_PROFILE=<profile> npm run workspace-directory -- --action deregister
+AWS_PROFILE=<profile> npm run workspace-directory -- deregister
 
 # Provision the aws-cdk-solution (MS Active Directory takes ~20 minutes)
 AWS_PROFILE=<profile> cdk destroy --all
