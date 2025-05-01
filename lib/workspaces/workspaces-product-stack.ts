@@ -5,19 +5,16 @@ import * as workspaces from "aws-cdk-lib/aws-workspaces";
 import { Construct } from "constructs";
 import { Bundles, ComputeType, OperatingSystem, RunningMode } from "./types";
 import { SSM_PARAM } from "../directory/constants";
+import { Parameter } from "aws-cdk-lib/aws-appconfig";
 
 export class WorkspacesProductStack extends servicecatalog.ProductStack {
   constructor(scope: Construct, id: string) {
     super(scope, id);
 
-    const directoryId = ssm.StringParameter.valueForTypedStringParameterV2(
-      this,
-      SSM_PARAM.DIRECTORY_ID
-    );
-
     const pUsername = new cdk.CfnParameter(this, "pUsername", {
       description:
-        "The Electronic Data Interchange Personal Identifier, a unique 10-digit number found on the back of your CAC.",
+        "The username of an existant user in the AD to provision the workspace for.",
+      type: "String",
     });
 
     const pWorkspaceBundle = new cdk.CfnParameter(this, "pOperatingSystem", {
@@ -37,6 +34,26 @@ export class WorkspacesProductStack extends servicecatalog.ProductStack {
       ],
       default: ComputeType.Performance,
     });
+
+    const directoryId = ssm.StringParameter.valueForTypedStringParameterV2(
+      this,
+      SSM_PARAM.DIRECTORY_ID
+    );
+
+    this.templateOptions.metadata = {
+      "AWS::CloudFormation::Interface": {
+        ParameterGroups: [
+          {
+            Label: { default: "Workspace Options" },
+            Parameters: [
+              pUsername.logicalId,
+              pWorkspaceBundle.logicalId,
+              pHardware.logicalId,
+            ],
+          },
+        ],
+      },
+    };
 
     const mWorkspaceBundlesMapping = new cdk.CfnMapping(
       this,
@@ -68,7 +85,7 @@ export class WorkspacesProductStack extends servicecatalog.ProductStack {
     const workspace = new workspaces.CfnWorkspace(this, "rWorkspace", {
       // Workspace ownership
       directoryId: directoryId,
-      userName: pUsername.toString(),
+      userName: pUsername.valueAsString,
 
       // Encryption Configuraiton
       // rootVolumeEncryptionEnabled: true,
@@ -78,10 +95,7 @@ export class WorkspacesProductStack extends servicecatalog.ProductStack {
       // VDI Configurations
       bundleId: bundle,
       workspaceProperties: {
-        // rootVolumeSizeGib: 80,
         runningMode: RunningMode.AUTO_STOP,
-        runningModeAutoStopTimeoutInMinutes: 20,
-        // userVolumeSizeGib: 100,
       },
     });
 

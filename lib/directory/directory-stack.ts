@@ -1,4 +1,5 @@
 import * as cdk from "aws-cdk-lib";
+import * as customresources from "aws-cdk-lib/custom-resources";
 import * as ssm from "aws-cdk-lib/aws-ssm";
 import * as directoryservice from "aws-cdk-lib/aws-directoryservice";
 import { Construct } from "constructs";
@@ -25,14 +26,16 @@ export class ActiveDirectoryStack extends cdk.Stack {
       "rMicrosoftAD",
       {
         edition: "Standard",
-        name: "workspace.example.com",
-        password: "mockPassword123",
+        name: "workspace.amazon.com",
+        password: "Password123!", // TODO: Currently mock password, should come from SecretsManager
         vpcSettings: {
           subnetIds: directorySubnetIds,
           vpcId: vpcId,
         },
       }
     );
+
+    // new customresources.AwsCustomResource(this, "cl");
 
     new ssm.StringParameter(this, "rWorkspaceSubnetIdsParam", {
       parameterName: DIRECTORY_SSM_PARAM.DIRECTORY_ID,
