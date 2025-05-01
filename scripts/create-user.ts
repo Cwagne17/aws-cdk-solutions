@@ -7,6 +7,11 @@ import {
   DirectoryServiceClient,
   ResetUserPasswordCommand,
 } from "@aws-sdk/client-directory-service";
+import {
+  DescribeWorkspaceDirectoriesCommand,
+  DescribeWorkspaceDirectoriesCommandInput,
+  WorkSpacesClient,
+} from "@aws-sdk/client-workspaces";
 import { SSM_PARAM as DIRECTORY_SSM_PARAM } from "../lib/directory/constants";
 import { getParameter } from "./shared";
 import generator from "generate-password-ts";
@@ -42,6 +47,28 @@ async function createUser(user: User): Promise<void> {
     );
   } catch (error) {
     throw new Error(`ERROR: Could not create user ${user.username}: ${error}`);
+  }
+
+  try {
+    const workspaceDirectories = await new WorkSpacesClient({ region }).send(
+      new DescribeWorkspaceDirectoriesCommand({
+        DirectoryIds: [directoryId],
+      })
+    );
+
+    if (workspaceDirectories.Directories?.length != 1) {
+      throw new Error("No workspace directories found!");
+    }
+
+    const registrationCode =
+      workspaceDirectories.Directories[0].RegistrationCode;
+    console.log(
+      `INFO: Use the registration code ${registrationCode} to login to the workspaces client.`
+    );
+  } catch (error) {
+    throw new Error(
+      `ERROR: Could not describe workspace directories: ${error}`
+    );
   }
 
   const temporaryPassword = generator.generate({
