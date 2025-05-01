@@ -9,7 +9,6 @@ import {
 } from "@aws-sdk/client-directory-service";
 import {
   DescribeWorkspaceDirectoriesCommand,
-  DescribeWorkspaceDirectoriesCommandInput,
   WorkSpacesClient,
 } from "@aws-sdk/client-workspaces";
 import { SSM_PARAM as DIRECTORY_SSM_PARAM } from "../lib/directory/constants";
