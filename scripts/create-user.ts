@@ -3,8 +3,13 @@ import {
   DirectoryServiceDataClient,
   CreateUserCommand,
 } from "@aws-sdk/client-directory-service-data";
+import {
+  DirectoryServiceClient,
+  ResetUserPasswordCommand,
+} from "@aws-sdk/client-directory-service";
 import { SSM_PARAM as DIRECTORY_SSM_PARAM } from "../lib/directory/constants";
 import { getParameter } from "./shared";
+import generator from "generate-password-ts";
 const region = process.env.AWS_REGION ?? "us-east-1"; // Default to us-east-1 if not set
 
 interface User {
@@ -37,6 +42,29 @@ async function createUser(user: User): Promise<void> {
     );
   } catch (error) {
     throw new Error(`ERROR: Could not create user ${user.username}: ${error}`);
+  }
+
+  const temporaryPassword = generator.generate({
+    length: 14,
+    numbers: true,
+    symbols: true,
+    uppercase: true,
+  });
+  try {
+    await new DirectoryServiceClient({ region }).send(
+      new ResetUserPasswordCommand({
+        DirectoryId: directoryId,
+        UserName: user.username,
+        NewPassword: temporaryPassword,
+      })
+    );
+    console.log(
+      `INFO: User ${user.username} was ENABLED and the temporary password ${temporaryPassword} was created.`
+    );
+  } catch (error) {
+    throw new Error(
+      `ERROR: ${user.username} could not be enabled. Please reach out to an admin: ${error}`
+    );
   }
 }
 
