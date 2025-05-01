@@ -42,33 +42,6 @@ export class ActiveDirectoryStack extends cdk.Stack {
       }
     );
 
-    const workspaceRegistrationPolicy = iam.PolicyStatement.fromJson({
-      Effect: "Allow",
-      Action: "*",
-      Resource: "*",
-    });
-    const registerWorkspaceDirectory = {
-      service: "workspaces",
-      action: "RegisterWorkspaceDirectory",
-      physicalResourceId: customresources.PhysicalResourceId.of(
-        Date.now().toString()
-      ),
-      parameters: {
-        DirectoryId: directory.ref,
-        SubnetIds: workspaceSubnetIds,
-      },
-    };
-    const deregisterWorkspaceDirectory = {
-      ...registerWorkspaceDirectory,
-      action: "DeregisterWorkspaceDirectory",
-    };
-    new customresources.AwsCustomResource(this, "RegisterWorkspacesDirectory", {
-      onCreate: registerWorkspaceDirectory,
-      policy: customresources.AwsCustomResourcePolicy.fromStatements([
-        workspaceRegistrationPolicy,
-      ]),
-    });
-
     new ssm.StringParameter(this, "rWorkspaceSubnetIdsParam", {
       parameterName: DIRECTORY_SSM_PARAM.DIRECTORY_ID,
       stringValue: directory.ref,
