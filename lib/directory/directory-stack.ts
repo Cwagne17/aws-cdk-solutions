@@ -1,7 +1,8 @@
 import * as cdk from "aws-cdk-lib";
 import * as customresources from "aws-cdk-lib/custom-resources";
-import * as ssm from "aws-cdk-lib/aws-ssm";
 import * as directoryservice from "aws-cdk-lib/aws-directoryservice";
+import * as iam from "aws-cdk-lib/aws-iam";
+import * as ssm from "aws-cdk-lib/aws-ssm";
 import { Construct } from "constructs";
 import { SSM_PARAM as DIRECTORY_SSM_PARAM } from "./constants";
 import { SSM_PARAM as VPC_SSM_PARAM } from "../vpc";
@@ -21,6 +22,12 @@ export class ActiveDirectoryStack extends cdk.Stack {
         VPC_SSM_PARAM.DIRECTORY_SUBNET_IDS
       );
 
+    const workspaceSubnetIds =
+      ssm.StringListParameter.valueForTypedListParameter(
+        this,
+        VPC_SSM_PARAM.WORKSPACE_SUBNET_IDS
+      );
+
     const directory = new directoryservice.CfnMicrosoftAD(
       this,
       "rMicrosoftAD",
@@ -35,7 +42,32 @@ export class ActiveDirectoryStack extends cdk.Stack {
       }
     );
 
-    // new customresources.AwsCustomResource(this, "cl");
+    const workspaceRegistrationPolicy = iam.PolicyStatement.fromJson({
+      Effect: "Allow",
+      Action: "*",
+      Resource: "*",
+    });
+    const registerWorkspaceDirectory = {
+      service: "workspaces",
+      action: "RegisterWorkspaceDirectory",
+      physicalResourceId: customresources.PhysicalResourceId.of(
+        Date.now().toString()
+      ),
+      parameters: {
+        DirectoryId: directory.ref,
+        SubnetIds: workspaceSubnetIds,
+      },
+    };
+    const deregisterWorkspaceDirectory = {
+      ...registerWorkspaceDirectory,
+      action: "DeregisterWorkspaceDirectory",
+    };
+    new customresources.AwsCustomResource(this, "RegisterWorkspacesDirectory", {
+      onCreate: registerWorkspaceDirectory,
+      policy: customresources.AwsCustomResourcePolicy.fromStatements([
+        workspaceRegistrationPolicy,
+      ]),
+    });
 
     new ssm.StringParameter(this, "rWorkspaceSubnetIdsParam", {
       parameterName: DIRECTORY_SSM_PARAM.DIRECTORY_ID,

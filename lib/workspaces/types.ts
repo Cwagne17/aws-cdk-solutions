@@ -18,16 +18,20 @@ export enum OperatingSystem {
 
 export const Bundles: Mapping = {
   Value: {
-    RHEL8: "tbd",
-    Windows10: "tbd",
+    RHEL8: "wsb-hflmxmbbz",
+    Windows10: "wsb-fb2xfp6r8",
   },
   Standard: {
     RHEL8: "wsb-8wthbqzhx",
-    Windows10: "tbd",
+    Windows10: "wsb-93xk71ss4",
   },
   Performance: {
-    RHEL8: "tbd",
-    Windows10: "tbd",
+    RHEL8: "wsb-5s0yn651c",
+    Windows10: "wsb-gqbt42cw7",
+  },
+  Power: {
+    RHEL8: "wsb-w8yg9jx6t",
+    Windows10: "wsb-g72p36ch9",
   },
 };
 
