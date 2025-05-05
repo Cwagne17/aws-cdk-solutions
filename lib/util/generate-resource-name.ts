@@ -1,25 +1,26 @@
 import { Environment, RegionCode } from "./constants";
+import * as cdk from "aws-cdk-lib";
 
 /**
  * Interface for resource naming parameters
  */
 export interface ResourceNamingProps {
   /**
-   * Fixed prefix for the resource name (<= 6 lowercase alphanumeric characters)
+   * Fixed prefix for the resource name
    */
   prefix?: string;
 
   /**
-   * Project name (4-10 lowercase alphanumeric characters)
+   * Usage of the resource
    */
-  project: string;
+  usage: string;
 
   /**
    * Environment (e.g. prod, dev, test, staging)
-   * @default dev
+   * @default Environment.DEV
    * @see {@link Environment}
    */
-  env: Environment;
+  env?: Environment;
 
   /**
    * Short resource name for the type of resource (e.g. policy, sg)
@@ -27,16 +28,21 @@ export interface ResourceNamingProps {
   resource: string;
 
   /**
-   * Resource location (e.g. use1, usw1)
-   * @default use1
+   * Resource region code (e.g. use1, usw1)
+   * Will be automatically determined from Stack's region if not provided
    * @see {@link RegionCode}
    */
-  location?: RegionCode;
+  region?: RegionCode;
 
   /**
-   * Random suffix (4 lowercase alphanumeric characters)
+   * Random suffix
    */
   suffix?: string;
+
+  /**
+   * Optional Stack to determine region from, if region is not provided
+   */
+  stack?: cdk.Stack;
 }
 
 /**
@@ -55,32 +61,56 @@ function validateComponent(
 }
 
 /**
- * Generates a standardized AWS resource name
+ * Maps an AWS region to the corresponding RegionCode
+ */
+function getRegionCode(region: string): RegionCode {
+  switch (region) {
+    case "us-east-1":
+      return RegionCode.US_EAST_1;
+    case "us-west-1":
+      return RegionCode.US_WEST_1;
+    default:
+      throw new Error(`Unsupported region: ${region}`);
+  }
+}
+
+/**
+ * Generates a standardized AWS resource name following the pattern:
+ * [prefix-]<usage>-<env>-<resource>[-location][-suffix]
+ *
+ * If env is not provided, defaults to Environment.DEV
+ * If location is not provided, attempts to determine it from the stack's region
  */
 export function generateResourceName(props: ResourceNamingProps): string {
   if (props.prefix) {
     validateComponent(props.prefix, /^[a-z0-9]{6}$/, "prefix");
   }
 
-  validateComponent(props.project, /^[a-z0-9]{4,10}$/, "project");
+  validateComponent(props.usage, /^[a-z0-9-]{4,20}$/, "usage");
 
-  validateComponent(props.env, /^[a-z0-9]{1,12}$/, "resource");
+  const env = props.env ?? Environment.DEV;
 
-  if (props.location) {
-    validateComponent(props.location, /^[a-z0-9]{1,6}$/, "location");
+  // Sets the
+  let region = props.region;
+  if (!region && props.stack) {
+    region = getRegionCode(props.stack.region);
+  }
+
+  if (region) {
+    validateComponent(region, /^[a-z0-9]{1,6}$/, "region");
   }
 
   if (props.suffix) {
-    validateComponent(props.suffix, /^[a-z0-9]{4}$/, "suffix");
+    validateComponent(props.suffix, /^[a-z0-9]{12}$/, "suffix");
   }
 
   // Remove undefined/null values
   const components = [
     props.prefix,
-    props.project,
-    props.env,
+    props.usage,
+    env,
     props.resource,
-    props.location,
+    region,
     props.suffix,
   ].filter(Boolean);
 

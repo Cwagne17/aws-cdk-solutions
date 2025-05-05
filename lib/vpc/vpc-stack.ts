@@ -3,7 +3,7 @@ import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as logs from "aws-cdk-lib/aws-logs";
 import * as ssm from "aws-cdk-lib/aws-ssm";
 import { Construct } from "constructs";
-import { SSM_PARAM } from "../util";
+import { generateResourceName, SSM_PARAM } from "../util";
 import { SUBNET_NAMES } from "./constants";
 
 export class VpcStack extends cdk.Stack {
@@ -16,6 +16,10 @@ export class VpcStack extends cdk.Stack {
     const availabilityZones = this.getAvailabilityZones(this.region);
 
     this.logGroup = new logs.LogGroup(this, "rVpcFlowlogsGroup", {
+      logGroupName: generateResourceName({
+        usage: "vpc",
+        resource: "flowlogs",
+      }),
       retention: logs.RetentionDays.ONE_MONTH,
       logGroupClass: logs.LogGroupClass.INFREQUENT_ACCESS,
       removalPolicy: cdk.RemovalPolicy.DESTROY,

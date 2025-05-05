@@ -5,13 +5,15 @@ import * as iam from "aws-cdk-lib/aws-iam";
 import * as ssm from "aws-cdk-lib/aws-ssm";
 import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
+import * as logs from "aws-cdk-lib/aws-logs";
 import { Construct } from "constructs";
+import { generateResourceName } from "../util";
+import * as path from "path";
 
 interface WorkspacesSSMActivationStackProps extends cdk.StackProps {
   vpc: ec2.IVpc;
   vpcCidr: string;
   subnets: ec2.ISubnet[];
-  existingManagedInstanceProfile?: string;
 }
 
 export class WorkspacesSSMActivationStack extends cdk.Stack {
@@ -22,42 +24,24 @@ export class WorkspacesSSMActivationStack extends cdk.Stack {
   ) {
     super(scope, id, props);
 
-    // VPC Endpoints Security Groups
-    const apiGatewaySecurityGroup = new ec2.SecurityGroup(
+    const vpcEndpointsSecurityGroup = new ec2.SecurityGroup(
       this,
-      "rAPIGatewayVPCEndpointSG",
+      "rVpcEndpointsSecurityGroup",
       {
         vpc: props.vpc,
-        description: "Security group for API Gateway VPC Endpoint",
+        description: "Security group for VPC Endpoints",
         allowAllOutbound: true,
-        securityGroupName: "sgroup-euc-apig-vpcendpoint",
+        securityGroupName: generateResourceName({
+          stack: this,
+          usage: "vpcendpoints",
+          resource: "sg",
+        }),
       }
     );
-    apiGatewaySecurityGroup.addIngressRule(
+    vpcEndpointsSecurityGroup.addIngressRule(
       ec2.Peer.ipv4(props.vpcCidr),
-      ec2.Port.tcp(443)
-    );
-
-    const ssmSecurityGroup = new ec2.SecurityGroup(this, "rSSMVPCEndpointSG", {
-      vpc: props.vpc,
-      description: "Security group for SSM VPC Endpoints",
-      allowAllOutbound: true,
-      securityGroupName: "sgroup-euc-ssm-vpcendpoint",
-    });
-    ssmSecurityGroup.addIngressRule(
-      ec2.Peer.ipv4(props.vpcCidr),
-      ec2.Port.tcp(443)
-    );
-
-    const s3SecurityGroup = new ec2.SecurityGroup(this, "rS3VPCEndpointSG", {
-      vpc: props.vpc,
-      description: "Security group for S3 VPC Endpoint",
-      allowAllOutbound: true,
-      securityGroupName: "sgroup-euc-s3-vpcendpoint",
-    });
-    s3SecurityGroup.addIngressRule(
-      ec2.Peer.ipv4(props.vpcCidr),
-      ec2.Port.tcp(443)
+      ec2.Port.tcp(443),
+      "Allow HTTPS traffic from VPC CIDR"
     );
 
     // VPC Endpoints
@@ -69,7 +53,7 @@ export class WorkspacesSSMActivationStack extends cdk.Stack {
         service: ec2.InterfaceVpcEndpointAwsService.APIGATEWAY,
         subnets: { subnets: props.subnets },
         privateDnsEnabled: true,
-        securityGroups: [apiGatewaySecurityGroup],
+        securityGroups: [vpcEndpointsSecurityGroup],
       }
     );
 
@@ -78,7 +62,7 @@ export class WorkspacesSSMActivationStack extends cdk.Stack {
       service: ec2.InterfaceVpcEndpointAwsService.SSM,
       subnets: { subnets: props.subnets },
       privateDnsEnabled: true,
-      securityGroups: [ssmSecurityGroup],
+      securityGroups: [vpcEndpointsSecurityGroup],
     });
 
     new ec2.InterfaceVpcEndpoint(this, "rSSMMessagesEndpoint", {
@@ -86,7 +70,7 @@ export class WorkspacesSSMActivationStack extends cdk.Stack {
       service: ec2.InterfaceVpcEndpointAwsService.SSM_MESSAGES,
       subnets: { subnets: props.subnets },
       privateDnsEnabled: true,
-      securityGroups: [ssmSecurityGroup],
+      securityGroups: [vpcEndpointsSecurityGroup],
     });
 
     const s3Endpoint = new ec2.GatewayVpcEndpoint(this, "rS3Endpoint", {
@@ -96,9 +80,12 @@ export class WorkspacesSSMActivationStack extends cdk.Stack {
 
     // S3 Bucket for SSM Inventory
     const inventoryBucket = new s3.Bucket(this, "rSSMInventoryBucket", {
-      bucketName: `s3-${this.account}-ssm-inventory-bucket`,
-      removalPolicy: cdk.RemovalPolicy.RETAIN,
-      encryption: s3.BucketEncryption.S3_MANAGED,
+      bucketName: generateResourceName({
+        usage: "ssm-inventory",
+        resource: "bucket",
+        suffix: this.account,
+      }),
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 
     // IAM Roles
@@ -109,52 +96,56 @@ export class WorkspacesSSMActivationStack extends cdk.Stack {
           "service-role/AmazonSSMMaintenanceWindowRole"
         ),
       ],
-      roleName: `${this.region}-roles_ssm_maintenance`,
+      roleName: generateResourceName({
+        usage: "ssm-maintenance",
+        resource: "role",
+      }),
     });
 
     // Create SSM Instance Role if not provided
     let ssmInstanceRole: iam.Role;
-    if (!props.existingManagedInstanceProfile) {
-      ssmInstanceRole = new iam.Role(this, "rSSMInstanceRole", {
-        assumedBy: new iam.ServicePrincipal("ssm.amazonaws.com"),
-        managedPolicies: [
-          iam.ManagedPolicy.fromAwsManagedPolicyName(
-            "AmazonSSMManagedInstanceCore"
-          ),
-          iam.ManagedPolicy.fromAwsManagedPolicyName(
-            "CloudWatchAgentServerPolicy"
-          ),
+    ssmInstanceRole = new iam.Role(this, "rSSMInstanceRole", {
+      assumedBy: new iam.ServicePrincipal("ssm.amazonaws.com"),
+      managedPolicies: [
+        iam.ManagedPolicy.fromAwsManagedPolicyName(
+          "AmazonSSMManagedInstanceCore"
+        ),
+        iam.ManagedPolicy.fromAwsManagedPolicyName(
+          "CloudWatchAgentServerPolicy"
+        ),
+      ],
+      roleName: generateResourceName({
+        usage: "ssm-manageinstances",
+        resource: "role",
+      }),
+    });
+
+    // Add S3 permissions to SSM Instance Role
+    ssmInstanceRole.addToPolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["s3:GetObject", "s3:PutObject", "s3:PutObjectAcl"],
+        resources: [
+          inventoryBucket.bucketArn,
+          `${inventoryBucket.bucketArn}/*`,
         ],
-        roleName: `${this.region}-role_ssm_manageinstances`,
-      });
+      })
+    );
 
-      // Add S3 permissions to SSM Instance Role
-      ssmInstanceRole.addToPolicy(
-        new iam.PolicyStatement({
-          effect: iam.Effect.ALLOW,
-          actions: ["s3:GetObject", "s3:PutObject", "s3:PutObjectAcl"],
-          resources: [
-            inventoryBucket.bucketArn,
-            `${inventoryBucket.bucketArn}/*`,
-          ],
-        })
-      );
-
-      new iam.InstanceProfile(this, "rSSMInstanceProfile", {
-        instanceProfileName: `${this.region}-instanceprofile_ssm`,
-        role: ssmInstanceRole,
-      });
-    } else {
-      ssmInstanceRole = iam.Role.fromRoleName(
-        this,
-        "rExistingSSMInstanceRole",
-        props.existingManagedInstanceProfile
-      ) as iam.Role;
-    }
+    new iam.InstanceProfile(this, "rSSMInstanceProfile", {
+      instanceProfileName: generateResourceName({
+        usage: "ssm-manageinstances",
+        resource: "instanceprofile",
+      }),
+      role: ssmInstanceRole,
+    });
 
     // SSM Resource Data Sync
     new ssm.CfnResourceDataSync(this, "rResourceDataSync", {
-      syncName: "WorkSpaces-SSM-DataSync",
+      syncName: generateResourceName({
+        usage: "workspaces-ssm",
+        resource: "datasync",
+      }),
       s3Destination: {
         bucketName: inventoryBucket.bucketName,
         bucketRegion: this.region,
@@ -165,7 +156,10 @@ export class WorkspacesSSMActivationStack extends cdk.Stack {
     // SSM Patch Baselines
     new ssm.CfnPatchBaseline(this, "rWindowsPatchBaseline", {
       operatingSystem: "WINDOWS",
-      name: "WorkSpaces-Windows-All-Baseline",
+      name: generateResourceName({
+        usage: "workspaces-windows",
+        resource: "patchbaseline",
+      }),
       patchGroups: ["WinWorkSpacesGroup1", "WinWorkSpacesGroup2"],
       approvalRules: {
         patchRules: [
@@ -188,7 +182,10 @@ export class WorkspacesSSMActivationStack extends cdk.Stack {
 
     new ssm.CfnPatchBaseline(this, "rAmazonLinuxPatchBaseline", {
       operatingSystem: "AMAZON_LINUX_2",
-      name: "WorkSpaces-AmazonLinux-All-Baseline",
+      name: generateResourceName({
+        usage: "workspaces-amazonlinux",
+        resource: "patchbaseline",
+      }),
       patchGroups: ["AMZLINWorkSpacesGroup1", "AMZLINWorkSpacesGroup2"],
       approvalRules: {
         patchRules: [
@@ -207,20 +204,68 @@ export class WorkspacesSSMActivationStack extends cdk.Stack {
     });
 
     // SSM Maintenance Windows
-    new ssm.CfnMaintenanceWindow(this, "rMaintenanceWindowA", {
-      name: "WorkSpacesMaintenanceWindowA",
-      schedule: "cron(0 0 ? * SUN *)",
-      duration: 4,
-      cutoff: 1,
-      allowUnassociatedTargets: false,
+    const maintenanceWindowA = new ssm.CfnMaintenanceWindow(
+      this,
+      "rMaintenanceWindowA",
+      {
+        name: generateResourceName({
+          usage: "workspaces-ssm",
+          resource: "maintenancewindow",
+        }),
+        schedule: "cron(0 0 ? * SUN *)",
+        duration: 4,
+        cutoff: 1,
+        allowUnassociatedTargets: false,
+      }
+    );
+
+    const maintenanceWindowB = new ssm.CfnMaintenanceWindow(
+      this,
+      "rMaintenanceWindowB",
+      {
+        name: generateResourceName({
+          usage: "workspaces-ssm",
+          resource: "maintenancewindow-b",
+        }),
+        schedule: "cron(0 0 ? * MON *)",
+        duration: 4,
+        cutoff: 1,
+        allowUnassociatedTargets: false,
+      }
+    );
+
+    new ssm.CfnMaintenanceWindowTarget(this, "rMaintenanceWindowTargetA", {
+      windowId: maintenanceWindowA.ref,
+      resourceType: "INSTANCE",
+      targets: [
+        {
+          key: "tag:MaintenanceWindow",
+          values: ["WKSMaintWindowA"],
+        },
+      ],
+      name: generateResourceName({
+        usage: "workspaces-ssm",
+        resource: "maintenance-target-a",
+      }),
+      description: "Maintenance Window Target for Group A",
+      ownerInformation: "Amazon WorkSpaces Maintenance Window Target A",
     });
 
-    new ssm.CfnMaintenanceWindow(this, "rMaintenanceWindowB", {
-      name: "WorkSpacesMaintenanceWindowB",
-      schedule: "cron(0 0 ? * MON *)",
-      duration: 4,
-      cutoff: 1,
-      allowUnassociatedTargets: false,
+    new ssm.CfnMaintenanceWindowTarget(this, "rMaintenanceWindowTargetB", {
+      windowId: maintenanceWindowB.ref,
+      resourceType: "INSTANCE",
+      targets: [
+        {
+          key: "tag:MaintenanceWindow",
+          values: ["WKSMaintWindowB"],
+        },
+      ],
+      name: generateResourceName({
+        usage: "workspaces-ssm",
+        resource: "maintenance-target-b",
+      }),
+      description: "Maintenance Window Target for Group B",
+      ownerInformation: "Amazon WorkSpaces Maintenance Window Target B",
     });
 
     // Lambda Function for SSM Activation
@@ -228,60 +273,13 @@ export class WorkspacesSSMActivationStack extends cdk.Stack {
       this,
       "rSSMActivationFunction",
       {
+        functionName: generateResourceName({
+          usage: "workspaces",
+          resource: "getactivations",
+        }),
         runtime: lambda.Runtime.PYTHON_3_9,
-        handler: "index.lambda_handler",
-        code: lambda.Code.fromInline(`
-import boto3
-import os
-from datetime import datetime,timedelta
-
-ssmclient = boto3.client('ssm', os.environ['region'])
-ssmrole = os.getenv('iamrole')
-
-delta = timedelta(hours=1)
-expiry = datetime.now() + delta
-
-def lambda_handler(event,context):
-    suppliedname = (event['queryStringParameters']['name'])
-
-    ssmactivresponse = ssmclient.describe_activations(
-        Filters=[
-            {
-                'FilterKey': 'DefaultInstanceName',
-                'FilterValues': [
-                    suppliedname,
-                ]
-            },
-        ],
-        MaxResults=1,
-    )
-
-    if (ssmactivresponse['ResponseMetadata']['HTTPStatusCode']) == 200 and (ssmactivresponse['ActivationList']) != []:
-        print ('Activation Exists Already - Removing and Creating a new Activation')
-        activid = ssmactivresponse['ActivationList'][0]['ActivationId']
-        remresponse = ssmclient.delete_activation(
-        ActivationId=activid
-        )
-        apiresponse = create_activation(suppliedname)
-    else:
-        print ('Activation Doesnt Exist - Creating a new Activation')
-        apiresponse = create_activation(suppliedname)
-
-    return {
-        "statusCode": apiresponse['ResponseMetadata']['HTTPStatusCode'],
-        "headers": {"Content-Type": "application/json"},
-        "body": "{\\"ActivationCode\\": \\""+str(apiresponse['ActivationCode'])+"\\"\\n\\"ActivationId\\": \\""+str(apiresponse['ActivationId'])+"\\"}"
-    }
-
-def create_activation(wkspcname):
-    return ssmclient.create_activation(
-        Description='WorkspaceActivation-'+wkspcname,
-        DefaultInstanceName=wkspcname,
-        IamRole=ssmrole,
-        RegistrationLimit=1,
-        ExpirationDate=expiry,
-    )
-      `),
+        handler: "ssm-activation-lambda.lambda_handler",
+        code: lambda.Code.fromAsset(path.join(__dirname, "lambda")),
         environment: {
           region: this.region,
           iamrole: ssmInstanceRole.roleName,
@@ -303,7 +301,10 @@ def create_activation(wkspcname):
 
     // API Gateway
     const api = new apigateway.RestApi(this, "rWorkSpacesSSMActivator", {
-      restApiName: "workspacesSSMActivator",
+      restApiName: generateResourceName({
+        usage: "workspaces-ssm",
+        resource: "activator",
+      }),
       description: "WorkSpaces SSM Activation Enabler",
       endpointConfiguration: {
         types: [apigateway.EndpointType.PRIVATE],
@@ -343,7 +344,10 @@ def create_activation(wkspcname):
     // CloudWatch Role for API Gateway
     const apiGatewayCWRole = new iam.Role(this, "rAPIGatewayCWRole", {
       assumedBy: new iam.ServicePrincipal("apigateway.amazonaws.com"),
-      roleName: `${this.region}-roles_workspaces_cwlogging`,
+      roleName: generateResourceName({
+        usage: "workspaces",
+        resource: "cwlogging-role",
+      }),
     });
 
     apiGatewayCWRole.addToPolicy(
@@ -361,6 +365,15 @@ def create_activation(wkspcname):
         resources: ["*"],
       })
     );
+
+    new logs.LogGroup(this, "rAPIGatewayLogGroup", {
+      logGroupName: generateResourceName({
+        usage: "workspaces-ssm",
+        resource: "api-logs",
+      }),
+      retention: logs.RetentionDays.ONE_MONTH,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
 
     // Export values
     new cdk.CfnOutput(this, "oAPIEndpoint", {
