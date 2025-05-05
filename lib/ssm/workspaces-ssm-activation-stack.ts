@@ -25,7 +25,7 @@ export class WorkspacesSSMActivationStack extends cdk.Stack {
     // VPC Endpoints Security Groups
     const apiGatewaySecurityGroup = new ec2.SecurityGroup(
       this,
-      "APIGatewayVPCEndpointSG",
+      "rAPIGatewayVPCEndpointSG",
       {
         vpc: props.vpc,
         description: "Security group for API Gateway VPC Endpoint",
@@ -38,7 +38,7 @@ export class WorkspacesSSMActivationStack extends cdk.Stack {
       ec2.Port.tcp(443)
     );
 
-    const ssmSecurityGroup = new ec2.SecurityGroup(this, "SSMVPCEndpointSG", {
+    const ssmSecurityGroup = new ec2.SecurityGroup(this, "rSSMVPCEndpointSG", {
       vpc: props.vpc,
       description: "Security group for SSM VPC Endpoints",
       allowAllOutbound: true,
@@ -49,7 +49,7 @@ export class WorkspacesSSMActivationStack extends cdk.Stack {
       ec2.Port.tcp(443)
     );
 
-    const s3SecurityGroup = new ec2.SecurityGroup(this, "S3VPCEndpointSG", {
+    const s3SecurityGroup = new ec2.SecurityGroup(this, "rS3VPCEndpointSG", {
       vpc: props.vpc,
       description: "Security group for S3 VPC Endpoint",
       allowAllOutbound: true,
@@ -63,7 +63,7 @@ export class WorkspacesSSMActivationStack extends cdk.Stack {
     // VPC Endpoints
     const apiGatewayEndpoint = new ec2.InterfaceVpcEndpoint(
       this,
-      "APIGatewayEndpoint",
+      "rAPIGatewayEndpoint",
       {
         vpc: props.vpc,
         service: ec2.InterfaceVpcEndpointAwsService.APIGATEWAY,
@@ -73,7 +73,7 @@ export class WorkspacesSSMActivationStack extends cdk.Stack {
       }
     );
 
-    new ec2.InterfaceVpcEndpoint(this, "SSMEndpoint", {
+    new ec2.InterfaceVpcEndpoint(this, "rSSMEndpoint", {
       vpc: props.vpc,
       service: ec2.InterfaceVpcEndpointAwsService.SSM,
       subnets: { subnets: props.subnets },
@@ -81,7 +81,7 @@ export class WorkspacesSSMActivationStack extends cdk.Stack {
       securityGroups: [ssmSecurityGroup],
     });
 
-    new ec2.InterfaceVpcEndpoint(this, "SSMMessagesEndpoint", {
+    new ec2.InterfaceVpcEndpoint(this, "rSSMMessagesEndpoint", {
       vpc: props.vpc,
       service: ec2.InterfaceVpcEndpointAwsService.SSM_MESSAGES,
       subnets: { subnets: props.subnets },
@@ -89,20 +89,20 @@ export class WorkspacesSSMActivationStack extends cdk.Stack {
       securityGroups: [ssmSecurityGroup],
     });
 
-    const s3Endpoint = new ec2.GatewayVpcEndpoint(this, "S3Endpoint", {
+    const s3Endpoint = new ec2.GatewayVpcEndpoint(this, "rS3Endpoint", {
       vpc: props.vpc,
       service: ec2.GatewayVpcEndpointAwsService.S3,
     });
 
     // S3 Bucket for SSM Inventory
-    const inventoryBucket = new s3.Bucket(this, "SSMInventoryBucket", {
+    const inventoryBucket = new s3.Bucket(this, "rSSMInventoryBucket", {
       bucketName: `s3-${this.account}-ssm-inventory-bucket`,
       removalPolicy: cdk.RemovalPolicy.RETAIN,
       encryption: s3.BucketEncryption.S3_MANAGED,
     });
 
     // IAM Roles
-    new iam.Role(this, "SSMMaintenanceRole", {
+    new iam.Role(this, "rSSMMaintenanceRole", {
       assumedBy: new iam.ServicePrincipal("ssm.amazonaws.com"),
       managedPolicies: [
         iam.ManagedPolicy.fromAwsManagedPolicyName(
@@ -115,7 +115,7 @@ export class WorkspacesSSMActivationStack extends cdk.Stack {
     // Create SSM Instance Role if not provided
     let ssmInstanceRole: iam.Role;
     if (!props.existingManagedInstanceProfile) {
-      ssmInstanceRole = new iam.Role(this, "SSMInstanceRole", {
+      ssmInstanceRole = new iam.Role(this, "rSSMInstanceRole", {
         assumedBy: new iam.ServicePrincipal("ssm.amazonaws.com"),
         managedPolicies: [
           iam.ManagedPolicy.fromAwsManagedPolicyName(
@@ -140,20 +140,20 @@ export class WorkspacesSSMActivationStack extends cdk.Stack {
         })
       );
 
-      new iam.InstanceProfile(this, "SSMInstanceProfile", {
+      new iam.InstanceProfile(this, "rSSMInstanceProfile", {
         instanceProfileName: `${this.region}-instanceprofile_ssm`,
         role: ssmInstanceRole,
       });
     } else {
       ssmInstanceRole = iam.Role.fromRoleName(
         this,
-        "ExistingSSMInstanceRole",
+        "rExistingSSMInstanceRole",
         props.existingManagedInstanceProfile
       ) as iam.Role;
     }
 
     // SSM Resource Data Sync
-    new ssm.CfnResourceDataSync(this, "ResourceDataSync", {
+    new ssm.CfnResourceDataSync(this, "rResourceDataSync", {
       syncName: "WorkSpaces-SSM-DataSync",
       s3Destination: {
         bucketName: inventoryBucket.bucketName,
@@ -163,7 +163,7 @@ export class WorkspacesSSMActivationStack extends cdk.Stack {
     });
 
     // SSM Patch Baselines
-    new ssm.CfnPatchBaseline(this, "WindowsPatchBaseline", {
+    new ssm.CfnPatchBaseline(this, "rWindowsPatchBaseline", {
       operatingSystem: "WINDOWS",
       name: "WorkSpaces-Windows-All-Baseline",
       patchGroups: ["WinWorkSpacesGroup1", "WinWorkSpacesGroup2"],
@@ -186,7 +186,7 @@ export class WorkspacesSSMActivationStack extends cdk.Stack {
       },
     });
 
-    new ssm.CfnPatchBaseline(this, "AmazonLinuxPatchBaseline", {
+    new ssm.CfnPatchBaseline(this, "rAmazonLinuxPatchBaseline", {
       operatingSystem: "AMAZON_LINUX_2",
       name: "WorkSpaces-AmazonLinux-All-Baseline",
       patchGroups: ["AMZLINWorkSpacesGroup1", "AMZLINWorkSpacesGroup2"],
@@ -207,7 +207,7 @@ export class WorkspacesSSMActivationStack extends cdk.Stack {
     });
 
     // SSM Maintenance Windows
-    new ssm.CfnMaintenanceWindow(this, "MaintenanceWindowA", {
+    new ssm.CfnMaintenanceWindow(this, "rMaintenanceWindowA", {
       name: "WorkSpacesMaintenanceWindowA",
       schedule: "cron(0 0 ? * SUN *)",
       duration: 4,
@@ -215,7 +215,7 @@ export class WorkspacesSSMActivationStack extends cdk.Stack {
       allowUnassociatedTargets: false,
     });
 
-    new ssm.CfnMaintenanceWindow(this, "MaintenanceWindowB", {
+    new ssm.CfnMaintenanceWindow(this, "rMaintenanceWindowB", {
       name: "WorkSpacesMaintenanceWindowB",
       schedule: "cron(0 0 ? * MON *)",
       duration: 4,
@@ -226,7 +226,7 @@ export class WorkspacesSSMActivationStack extends cdk.Stack {
     // Lambda Function for SSM Activation
     const activationFunction = new lambda.Function(
       this,
-      "SSMActivationFunction",
+      "rSSMActivationFunction",
       {
         runtime: lambda.Runtime.PYTHON_3_9,
         handler: "index.lambda_handler",
@@ -291,18 +291,18 @@ def create_activation(wkspcname):
     );
 
     // Lambda Version and Alias
-    const version = new lambda.Version(this, "ActivationFunctionVersion", {
+    const version = new lambda.Version(this, "rActivationFunctionVersion", {
       lambda: activationFunction,
       description: "v1",
     });
 
-    const alias = new lambda.Alias(this, "ActivationFunctionAlias", {
+    const alias = new lambda.Alias(this, "rActivationFunctionAlias", {
       aliasName: "live",
       version,
     });
 
     // API Gateway
-    const api = new apigateway.RestApi(this, "WorkSpacesSSMActivator", {
+    const api = new apigateway.RestApi(this, "rWorkSpacesSSMActivator", {
       restApiName: "workspacesSSMActivator",
       description: "WorkSpaces SSM Activation Enabler",
       endpointConfiguration: {
@@ -341,7 +341,7 @@ def create_activation(wkspcname):
     );
 
     // CloudWatch Role for API Gateway
-    const apiGatewayCWRole = new iam.Role(this, "APIGatewayCWRole", {
+    const apiGatewayCWRole = new iam.Role(this, "rAPIGatewayCWRole", {
       assumedBy: new iam.ServicePrincipal("apigateway.amazonaws.com"),
       roleName: `${this.region}-roles_workspaces_cwlogging`,
     });
@@ -363,19 +363,19 @@ def create_activation(wkspcname):
     );
 
     // Export values
-    new cdk.CfnOutput(this, "APIEndpoint", {
+    new cdk.CfnOutput(this, "oAPIEndpoint", {
       value: `https://${api.restApiId}.execute-api.${this.region}.amazonaws.com/prod`,
       description: "Private API endpoint for SSM activation",
       exportName: "SSMActivationAPIEndPoint",
     });
 
-    new cdk.CfnOutput(this, "S3EndpointId", {
+    new cdk.CfnOutput(this, "oS3EndpointId", {
       value: s3Endpoint.vpcEndpointId,
       description: "S3 VPC Endpoint ID",
       exportName: "EUCVPCS3EndpointId",
     });
 
-    new cdk.CfnOutput(this, "APIEndpointId", {
+    new cdk.CfnOutput(this, "oAPIEndpointId", {
       value: apiGatewayEndpoint.vpcEndpointId,
       description: "API Gateway VPC Endpoint ID",
       exportName: "EUCVPCEndpointAPI",
