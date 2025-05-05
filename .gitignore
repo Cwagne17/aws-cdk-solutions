@@ -144,3 +144,5 @@ node_modules
 .cdk.staging
 cdk.out
 product-stack-snapshots/
+
+.Ds_Store
