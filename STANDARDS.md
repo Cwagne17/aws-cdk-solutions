@@ -7,7 +7,7 @@ This document outlines the naming conventions for AWS resources in our infrastru
 The general naming format follows this pattern:
 
 ```console
-[prefix-]<project>-<env>-<resource>-<location>[-suffix]
+[prefix-]<project>-<env>-<resource>[-location][-suffix]
 ```
 
 ### Components

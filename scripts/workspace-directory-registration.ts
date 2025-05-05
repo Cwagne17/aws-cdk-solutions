@@ -7,30 +7,26 @@ import {
   DirectoryServiceClient,
   EnableDirectoryDataAccessCommand,
 } from "@aws-sdk/client-directory-service";
-import { SSM_PARAM as DIRECTORY_SSM_PARAM } from "../lib/directory/constants";
-import { SSM_PARAM as VPC_SSM_PARAM } from "../lib/vpc";
 import { getParameter } from "./shared";
+import { SSM_PARAM } from "../lib/util";
 
 const region = process.env.AWS_REGION ?? "us-east-1"; // Default to us-east-1 if not set
 
 async function registerWorkspaceDirectory() {
-  const directoryId = await getParameter(
-    DIRECTORY_SSM_PARAM.DIRECTORY_ID,
-    region
-  );
+  const directoryId = await getParameter(SSM_PARAM.DIRECTORY_ID, region);
   if (!directoryId) {
     throw new Error(
-      `ERROR: Directory Id does not exist: ${DIRECTORY_SSM_PARAM.DIRECTORY_ID}`
+      `ERROR: Directory Id does not exist: ${SSM_PARAM.DIRECTORY_ID}`
     );
   }
 
   const workspaceSubnetIds = await getParameter(
-    VPC_SSM_PARAM.WORKSPACE_SUBNET_IDS,
+    SSM_PARAM.WORKSPACE_SUBNET_IDS,
     region
   );
   if (!workspaceSubnetIds) {
     throw new Error(
-      `ERROR: Workspace Subnet Ids do not exist: ${VPC_SSM_PARAM.WORKSPACE_SUBNET_IDS}`
+      `ERROR: Workspace Subnet Ids do not exist: ${SSM_PARAM.WORKSPACE_SUBNET_IDS}`
     );
   }
 
@@ -63,13 +59,10 @@ async function registerWorkspaceDirectory() {
 }
 
 async function deregisterWorkspaceDirectory() {
-  const directoryId = await getParameter(
-    DIRECTORY_SSM_PARAM.DIRECTORY_ID,
-    region
-  );
+  const directoryId = await getParameter(SSM_PARAM.DIRECTORY_ID, region);
   if (!directoryId) {
     throw new Error(
-      `ERROR: Directory Id does not exist: ${DIRECTORY_SSM_PARAM.DIRECTORY_ID}`
+      `ERROR: Directory Id does not exist: ${SSM_PARAM.DIRECTORY_ID}`
     );
   }
 

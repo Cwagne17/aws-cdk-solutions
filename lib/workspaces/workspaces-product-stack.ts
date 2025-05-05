@@ -3,9 +3,13 @@ import * as servicecatalog from "aws-cdk-lib/aws-servicecatalog";
 import * as ssm from "aws-cdk-lib/aws-ssm";
 import * as workspaces from "aws-cdk-lib/aws-workspaces";
 import { Construct } from "constructs";
-import { Bundles, ComputeType, OperatingSystem, RunningMode } from "./types";
-import { SSM_PARAM } from "../directory/constants";
-import { Parameter } from "aws-cdk-lib/aws-appconfig";
+import {
+  Bundles,
+  ComputeType,
+  OperatingSystem,
+  RunningMode,
+} from "./constants";
+import { SSM_PARAM } from "../util";
 
 export class WorkspacesProductStack extends servicecatalog.ProductStack {
   constructor(scope: Construct, id: string) {

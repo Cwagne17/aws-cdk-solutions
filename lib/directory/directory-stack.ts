@@ -2,8 +2,7 @@ import * as cdk from "aws-cdk-lib";
 import * as directoryservice from "aws-cdk-lib/aws-directoryservice";
 import * as ssm from "aws-cdk-lib/aws-ssm";
 import { Construct } from "constructs";
-import { SSM_PARAM as DIRECTORY_SSM_PARAM } from "./constants";
-import { SSM_PARAM as VPC_SSM_PARAM } from "../vpc";
+import { SSM_PARAM } from "../util";
 
 export class ActiveDirectoryStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -11,19 +10,19 @@ export class ActiveDirectoryStack extends cdk.Stack {
 
     const vpcId = ssm.StringParameter.valueForTypedStringParameterV2(
       this,
-      VPC_SSM_PARAM.VPC_ID
+      SSM_PARAM.VPC_ID
     );
 
     const directorySubnetIds =
       ssm.StringListParameter.valueForTypedListParameter(
         this,
-        VPC_SSM_PARAM.DIRECTORY_SUBNET_IDS
+        SSM_PARAM.DIRECTORY_SUBNET_IDS
       );
 
     const workspaceSubnetIds =
       ssm.StringListParameter.valueForTypedListParameter(
         this,
-        VPC_SSM_PARAM.WORKSPACE_SUBNET_IDS
+        SSM_PARAM.WORKSPACE_SUBNET_IDS
       );
 
     const directory = new directoryservice.CfnMicrosoftAD(
@@ -41,7 +40,7 @@ export class ActiveDirectoryStack extends cdk.Stack {
     );
 
     new ssm.StringParameter(this, "rWorkspaceSubnetIdsParam", {
-      parameterName: DIRECTORY_SSM_PARAM.DIRECTORY_ID,
+      parameterName: SSM_PARAM.DIRECTORY_ID,
       stringValue: directory.ref,
     });
 

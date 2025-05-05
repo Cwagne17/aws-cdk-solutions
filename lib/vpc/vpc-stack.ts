@@ -3,7 +3,8 @@ import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as logs from "aws-cdk-lib/aws-logs";
 import * as ssm from "aws-cdk-lib/aws-ssm";
 import { Construct } from "constructs";
-import { SSM_PARAM, SUBNET_NAMES } from "./constants";
+import { SSM_PARAM } from "../util";
+import { SUBNET_NAMES } from "./constants";
 
 export class VpcStack extends cdk.Stack {
   readonly vpc: ec2.Vpc;
