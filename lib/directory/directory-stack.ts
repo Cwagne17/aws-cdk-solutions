@@ -2,7 +2,7 @@ import * as cdk from "aws-cdk-lib";
 import * as directoryservice from "aws-cdk-lib/aws-directoryservice";
 import * as ssm from "aws-cdk-lib/aws-ssm";
 import { Construct } from "constructs";
-import { SSM_PARAM, generateResourceName } from "../util";
+import { SSM_PARAM } from "../util";
 
 export class ActiveDirectoryStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
@@ -24,10 +24,7 @@ export class ActiveDirectoryStack extends cdk.Stack {
       "rMicrosoftAD",
       {
         edition: "Standard",
-        name: generateResourceName({
-          usage: "workspace",
-          resource: "directory",
-        }),
+        name: "workspace.amazon.com",
         password: "Password123!", // TODO: Currently mock password, should come from SecretsManager
         vpcSettings: {
           subnetIds: directorySubnetIds,

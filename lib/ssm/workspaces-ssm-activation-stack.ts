@@ -7,28 +7,40 @@ import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as logs from "aws-cdk-lib/aws-logs";
 import { Construct } from "constructs";
-import { generateResourceName } from "../util";
+import { generateResourceName, SSM_PARAM } from "../util";
 import * as path from "path";
 
-interface WorkspacesSSMActivationStackProps extends cdk.StackProps {
-  vpc: ec2.IVpc;
-  vpcCidr: string;
-  subnets: ec2.ISubnet[];
-}
-
 export class WorkspacesSSMActivationStack extends cdk.Stack {
-  constructor(
-    scope: Construct,
-    id: string,
-    props: WorkspacesSSMActivationStackProps
-  ) {
+  constructor(scope: Construct, id: string, props: cdk.StackProps) {
     super(scope, id, props);
+
+    const vpcId = ssm.StringParameter.valueForTypedStringParameterV2(
+      this,
+      SSM_PARAM.VPC_ID
+    );
+    const vpc = ec2.Vpc.fromLookup(this, "rVpc", {
+      vpcId: vpcId,
+    });
+
+    const vpcCidr = ssm.StringParameter.valueForTypedStringParameterV2(
+      this,
+      SSM_PARAM.VPC_CIDR
+    );
+
+    const workspaceSubnetIds =
+      ssm.StringListParameter.valueForTypedListParameter(
+        this,
+        SSM_PARAM.WORKSPACE_SUBNET_IDS
+      );
+    const workspaceSubnets = workspaceSubnetIds.map((subnetId) =>
+      ec2.Subnet.fromSubnetId(this, `rSubnet-${subnetId}`, subnetId)
+    );
 
     const vpcEndpointsSecurityGroup = new ec2.SecurityGroup(
       this,
       "rVpcEndpointsSecurityGroup",
       {
-        vpc: props.vpc,
+        vpc: vpc,
         description: "Security group for VPC Endpoints",
         allowAllOutbound: true,
         securityGroupName: generateResourceName({
@@ -39,7 +51,7 @@ export class WorkspacesSSMActivationStack extends cdk.Stack {
       }
     );
     vpcEndpointsSecurityGroup.addIngressRule(
-      ec2.Peer.ipv4(props.vpcCidr),
+      ec2.Peer.ipv4(vpcCidr),
       ec2.Port.tcp(443),
       "Allow HTTPS traffic from VPC CIDR"
     );
@@ -49,18 +61,18 @@ export class WorkspacesSSMActivationStack extends cdk.Stack {
       this,
       "rAPIGatewayEndpoint",
       {
-        vpc: props.vpc,
+        vpc: vpc,
         service: ec2.InterfaceVpcEndpointAwsService.APIGATEWAY,
-        subnets: { subnets: props.subnets },
+        subnets: { subnets: workspaceSubnets },
         privateDnsEnabled: true,
         securityGroups: [vpcEndpointsSecurityGroup],
       }
     );
 
     new ec2.InterfaceVpcEndpoint(this, "rSSMEndpoint", {
-      vpc: props.vpc,
+      vpc: vpc,
       service: ec2.InterfaceVpcEndpointAwsService.SSM,
-      subnets: { subnets: props.subnets },
+      subnets: { subnets: workspaceSubnets },
       privateDnsEnabled: true,
       securityGroups: [vpcEndpointsSecurityGroup],
     });
@@ -103,8 +115,7 @@ export class WorkspacesSSMActivationStack extends cdk.Stack {
     });
 
     // Create SSM Instance Role if not provided
-    let ssmInstanceRole: iam.Role;
-    ssmInstanceRole = new iam.Role(this, "rSSMInstanceRole", {
+    const ssmInstanceRole = new iam.Role(this, "rSSMInstanceRole", {
       assumedBy: new iam.ServicePrincipal("ssm.amazonaws.com"),
       managedPolicies: [
         iam.ManagedPolicy.fromAwsManagedPolicyName(
@@ -240,7 +251,7 @@ export class WorkspacesSSMActivationStack extends cdk.Stack {
       targets: [
         {
           key: "tag:MaintenanceWindow",
-          values: ["WKSMaintWindowA"],
+          values: [maintenanceWindowA.name],
         },
       ],
       name: generateResourceName({
@@ -257,7 +268,7 @@ export class WorkspacesSSMActivationStack extends cdk.Stack {
       targets: [
         {
           key: "tag:MaintenanceWindow",
-          values: ["WKSMaintWindowB"],
+          values: [maintenanceWindowB.name],
         },
       ],
       name: generateResourceName({

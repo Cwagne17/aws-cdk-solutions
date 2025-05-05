@@ -3,6 +3,7 @@ import * as cdk from "aws-cdk-lib";
 import { WorkspacesPortfolioStack } from "../lib/workspaces";
 import { VpcStack } from "../lib/vpc";
 import { ActiveDirectoryStack } from "../lib/directory";
+import { WorkspacesSSMActivationStack } from "../lib/ssm";
 
 const app = new cdk.App();
 
@@ -23,6 +24,11 @@ const portfolio = new WorkspacesPortfolioStack(
   app,
   `${projectName}WorkspaceProduct`,
   props
+);
+
+const workspaceSsmActiviation = new WorkspacesSSMActivationStack(
+  app,
+  `${projectName}WorkspaceSSMActivation`
 );
 
 directory.addDependency(
