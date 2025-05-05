@@ -86,7 +86,7 @@ export function generateResourceName(props: ResourceNamingProps): string {
     validateComponent(props.prefix, /^[a-z0-9]{6}$/, "prefix");
   }
 
-  validateComponent(props.usage, /^[a-z0-9-]{1,20}$/, "usage");
+  validateComponent(props.usage, /^[a-z0-9-]{1,30}$/, "usage");
 
   const env = props.env ?? Environment.DEV;
 

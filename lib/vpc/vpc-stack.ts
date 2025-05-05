@@ -8,12 +8,16 @@ import { SUBNET_NAMES } from "./constants";
 
 export class VpcStack extends cdk.Stack {
   readonly vpc: ec2.Vpc;
+  readonly activeDirectorySubnets: ec2.ISubnet[];
+  readonly workspaceSubnets: ec2.ISubnet[];
+  readonly eksNodeGroupSubnets: ec2.ISubnet[];
+  readonly ingressSubnets: ec2.ISubnet[];
   readonly logGroup: logs.LogGroup;
 
   constructor(scope: Construct, id: string, props: cdk.StackProps) {
     super(scope, id, props);
 
-    const availabilityZones = this.getAvailabilityZones(this.region);
+    const availabilityZones = this.getWorkspacesAvailabilityZones(this.region);
 
     this.logGroup = new logs.LogGroup(this, "rVpcFlowlogsGroup", {
       logGroupName: generateResourceName({
@@ -64,43 +68,58 @@ export class VpcStack extends cdk.Stack {
       stringValue: this.vpc.vpcCidrBlock,
     });
 
+    this.activeDirectorySubnets = this.vpc.selectSubnets({
+      subnetGroupName: SUBNET_NAMES.ACTIVE_DIRECTORY,
+    }).subnets;
     new ssm.StringListParameter(this, "rDirectorySubnetIdsParam", {
       parameterName: SSM_PARAM.DIRECTORY_SUBNET_IDS,
-      stringListValue: this.vpc
-        .selectSubnets({
-          subnetGroupName: SUBNET_NAMES.ACTIVE_DIRECTORY,
-        })
-        .subnetIds.slice(0, 2),
+      stringListValue: this.activeDirectorySubnets.map(
+        (subnet) => subnet.subnetId
+      ),
     });
 
+    this.eksNodeGroupSubnets = this.vpc.selectSubnets({
+      subnetGroupName: SUBNET_NAMES.EKS_NODE_GROUP,
+    }).subnets;
     new ssm.StringListParameter(this, "rEksNodeGroupSubnetIdsParam", {
       parameterName: SSM_PARAM.EKS_NODE_GROUP_SUBNET_IDS,
-      stringListValue: this.vpc.selectSubnets({
-        subnetGroupName: SUBNET_NAMES.EKS_NODE_GROUP,
-      }).subnetIds,
+      stringListValue: this.eksNodeGroupSubnets.map(
+        (subnet) => subnet.subnetId
+      ),
     });
 
+    this.workspaceSubnets = this.vpc.selectSubnets({
+      subnetGroupName: SUBNET_NAMES.WORKSPACE,
+    }).subnets;
     new ssm.StringListParameter(this, "rWorkspaceSubnetIdsParam", {
       parameterName: SSM_PARAM.WORKSPACE_SUBNET_IDS,
-      stringListValue: this.vpc.selectSubnets({
-        subnetGroupName: SUBNET_NAMES.WORKSPACE,
-      }).subnetIds,
+      stringListValue: this.workspaceSubnets.map((subnet) => subnet.subnetId),
+    });
+
+    this.ingressSubnets = this.vpc.selectSubnets({
+      subnetGroupName: SUBNET_NAMES.INGRESS,
+    }).subnets;
+    new ssm.StringListParameter(this, "rIngressSubnetIdsParam", {
+      parameterName: SSM_PARAM.INGRESS_SUBNET_IDS,
+      stringListValue: this.ingressSubnets.map((subnet) => subnet.subnetId),
     });
   }
 
   /**
-   * Amazon Workspaces is only available in certain regions. This will return the
-   * availability zones that are supported for the region.
+   * Amazon Workspaces is only available in certain regions. This will return two
+   * of the availability zones that are supported for the region. Only two are
+   * returned because Microsoft AD and Workspaces require two subnets in
+   * different availability zones.
    * https://docs.aws.amazon.com/workspaces/latest/adminguide/azs-workspaces.html
    *
    * @param region the AWS region that the solution is being provisioned in
    */
-  getAvailabilityZones(region: string) {
+  getWorkspacesAvailabilityZones(region: string) {
     switch (region) {
       case "us-east-1":
-        return ["us-east-1a", "us-east-1c", "us-east-1d"];
+        return ["us-east-1a", "us-east-1c"];
       case "us-west-2":
-        return ["us-east-2a", "us-east-2b", "us-east-2c"];
+        return ["us-east-2a", "us-east-2b"];
       default:
         throw new cdk.ValidationError(
           `${region} unsupported by VpcStack...`,

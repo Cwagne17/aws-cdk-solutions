@@ -10,17 +10,19 @@ import { Construct } from "constructs";
 import { generateResourceName, SSM_PARAM } from "../util";
 import * as path from "path";
 
+interface WorkspacesSSMActivationStackProps extends cdk.StackProps {
+  vpc: ec2.IVpc;
+}
+
 export class WorkspacesSSMActivationStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props: cdk.StackProps) {
+  constructor(
+    scope: Construct,
+    id: string,
+    props: WorkspacesSSMActivationStackProps
+  ) {
     super(scope, id, props);
 
-    const vpcId = ssm.StringParameter.valueForTypedStringParameterV2(
-      this,
-      SSM_PARAM.VPC_ID
-    );
-    const vpc = ec2.Vpc.fromLookup(this, "rVpc", {
-      vpcId: vpcId,
-    });
+    const vpc = props.vpc;
 
     const vpcCidr = ssm.StringParameter.valueForTypedStringParameterV2(
       this,
@@ -78,25 +80,21 @@ export class WorkspacesSSMActivationStack extends cdk.Stack {
     });
 
     new ec2.InterfaceVpcEndpoint(this, "rSSMMessagesEndpoint", {
-      vpc: props.vpc,
+      vpc: vpc,
       service: ec2.InterfaceVpcEndpointAwsService.SSM_MESSAGES,
-      subnets: { subnets: props.subnets },
+      subnets: { subnets: workspaceSubnets },
       privateDnsEnabled: true,
       securityGroups: [vpcEndpointsSecurityGroup],
     });
 
     const s3Endpoint = new ec2.GatewayVpcEndpoint(this, "rS3Endpoint", {
-      vpc: props.vpc,
+      vpc: vpc,
       service: ec2.GatewayVpcEndpointAwsService.S3,
     });
 
     // S3 Bucket for SSM Inventory
     const inventoryBucket = new s3.Bucket(this, "rSSMInventoryBucket", {
-      bucketName: generateResourceName({
-        usage: "ssm-inventory",
-        resource: "bucket",
-        suffix: this.account,
-      }),
+      bucketName: `ssm-inventory-bucket-${this.account}`,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
 

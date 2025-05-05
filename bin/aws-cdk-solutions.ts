@@ -14,11 +14,11 @@ const props = {
 
 const vpc = new VpcStack(app, `${projectName}Vpc`, props);
 
-const directory = new ActiveDirectoryStack(
-  app,
-  `${projectName}Directory`,
-  props
-);
+const directory = new ActiveDirectoryStack(app, `${projectName}Directory`, {
+  ...props,
+  vpc: vpc.vpc,
+  subnets: vpc.activeDirectorySubnets,
+});
 
 const portfolio = new WorkspacesPortfolioStack(
   app,
@@ -28,7 +28,11 @@ const portfolio = new WorkspacesPortfolioStack(
 
 const workspaceSsmActiviation = new WorkspacesSSMActivationStack(
   app,
-  `${projectName}WorkspaceSSMActivation`
+  `${projectName}WorkspaceSSMActivation`,
+  {
+    ...props,
+    vpc: vpc.vpc,
+  }
 );
 
 directory.addDependency(
@@ -39,4 +43,9 @@ directory.addDependency(
 portfolio.addDependency(
   directory,
   "The portfolio depends on the Directory Id SSM param to exist."
+);
+
+workspaceSsmActiviation.addDependency(
+  vpc,
+  "The workspace SSM activation depends on the VPC SSM params to exist."
 );

@@ -31,8 +31,6 @@ export class WorkspacesPortfolioStack extends cdk.Stack {
     );
     portfolio.giveAccessToRole(adminSSORole);
 
-    console.log(version);
-
     const productStackHistory = new servicecatalog.ProductStackHistory(
       this,
       "rWorkspaceProductStackHistory",
