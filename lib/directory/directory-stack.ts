@@ -1,7 +1,5 @@
 import * as cdk from "aws-cdk-lib";
-import * as customresources from "aws-cdk-lib/custom-resources";
 import * as directoryservice from "aws-cdk-lib/aws-directoryservice";
-import * as iam from "aws-cdk-lib/aws-iam";
 import * as ssm from "aws-cdk-lib/aws-ssm";
 import { Construct } from "constructs";
 import { SSM_PARAM as DIRECTORY_SSM_PARAM } from "./constants";

@@ -1,0 +1,272 @@
+AWSTemplateFormatVersion: '2010-09-09'
+#Transform: AWS::Serverless-2016-10-31
+Description: WorkSpaces SSM Activation API setup template
+Resources:
+  LAMBDAFunction:
+    Type: AWS::Lambda::Function
+    DependsOn: LAMBDARole
+    Properties:
+      Code: 
+        ZipFile: !Sub |
+            import boto3
+            import os
+            from datetime import datetime,timedelta
+
+            ssmclient = boto3.client('ssm', os.environ['region'])
+            ssmrole = os.getenv('iamrole')
+
+            delta = timedelta(hours=1)
+            expiry = datetime.now() + delta
+
+            def lambda_handler(event,context):
+                suppliedname = (event['queryStringParameters']['name'])
+
+                ssmactivresponse = ssmclient.describe_activations(
+                    Filters=[
+                        {
+                            'FilterKey': 'DefaultInstanceName',
+                            'FilterValues': [
+                                suppliedname,
+                            ]
+                        },
+                    ],
+                    MaxResults=1,
+                )
+
+                if (ssmactivresponse['ResponseMetadata']['HTTPStatusCode']) == 200 and (ssmactivresponse['ActivationList']) != []:
+                    
+                    print ('Activation Exists Already - Removing and Creating a new Activation')
+
+                    activid = ssmactivresponse['ActivationList'][0]['ActivationId']
+                    remresponse = ssmclient.delete_activation(
+                    ActivationId=activid
+                    )
+
+                    apiresponse = create_activation(suppliedname)
+
+                else:
+                    print ('Activation Doesnt Exist - Creating a new Activation')
+                    apiresponse = create_activation(suppliedname)
+
+                return {
+                    "statusCode": apiresponse['ResponseMetadata']['HTTPStatusCode'],
+                    "headers": {"Content-Type": "application/json"},
+                    "body": "{\n\"ActivationCode\": \""+str(apiresponse['ActivationCode'])+"\",\n\"ActivationId\": \""+str(apiresponse['ActivationId'])+"\"\n}"
+                }
+
+            def create_activation(wkspcname):
+                return ssmclient.create_activation(
+                    Description='WorkspaceActivation-'+wkspcname,
+                    DefaultInstanceName=wkspcname,
+                    IamRole=ssmrole,
+                    RegistrationLimit=1,
+                    ExpirationDate=expiry,
+                )      
+      Environment:
+        Variables:
+          region: !Ref "AWS::Region"
+          iamrole: 
+            Fn::ImportValue: WorkSpacesSSMInstanceRole
+      Handler: index.lambda_handler
+      FunctionName: workspaces-getactivations
+      Role:
+        Fn::GetAtt:
+        - LAMBDARole
+        - Arn
+      Runtime: python3.8
+      Timeout: 10 
+  LAMBDAVersion:
+    Type: AWS::Lambda::Version
+    Properties:
+      FunctionName: !Ref LAMBDAFunction
+      Description: v1  
+  LAMBDAAlias:
+    Type: AWS::Lambda::Alias
+    Properties:
+      FunctionName: !Ref LAMBDAFunction
+      FunctionVersion: !GetAtt LAMBDAVersion.Version
+      Name: live
+  LAMBDARole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/AWSLambdaExecute
+      RoleName:
+        Fn::Join:
+        - ''
+        - - !Ref AWS::Region
+          - "-"
+          - roles_workspaces_lambda_activation
+  LAMBDAPolicy:
+    Type: AWS::IAM::Policy
+    DependsOn: LAMBDARole
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Action:
+          - ssm:List*
+          - ssm:Describe*
+          - ssm:Get*
+          - ssm:CreateActivation
+          - ssm:DeleteActivation
+          Resource:
+            - !Sub 'arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:*'
+            - !Sub
+                - 'arn:aws:iam::${AWS::AccountId}:role/${instancerole}'
+                - instancerole: !ImportValue WorkSpacesSSMInstanceRole
+        - Effect: Allow          
+          Action:
+            - iam:PassRole
+          Resource:
+            - !Sub
+                - 'arn:aws:iam::${AWS::AccountId}:role/${instancerole}'
+                - instancerole: !ImportValue WorkSpacesSSMInstanceRole
+            - !Sub 
+                - 'arn:aws:iam::${AWS::AccountId}:role/${activaterole}'
+                - activaterole: !Ref LAMBDARole
+      PolicyName:
+        !Sub '${AWS::Region}-policy_workspaces_lambda_activation'
+      Roles:
+      - Ref: LAMBDARole
+  LAMBDAPerm:
+    Type: AWS::Lambda::Permission
+    DependsOn: workspacesAPIDeployment
+    Properties:
+      Action: lambda:invokeFunction
+      FunctionName:
+        !Sub
+            - '${myarn}:live'
+            - myarn: !GetAtt LAMBDAFunction.Arn
+      Principal: apigateway.amazonaws.com
+  workspacesAPICWRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service:
+            - apigateway.amazonaws.com
+          Action:
+          - sts:AssumeRole
+      Policies:
+      - PolicyName:
+          Fn::Join:
+          - ''
+          - - !Ref AWS::Region
+            - "-"
+            - policy_workspaces_cwlogging
+        PolicyDocument:
+          Version: '2012-10-17'
+          Statement:
+          - Effect: Allow
+            Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:DescribeLogGroups
+            - logs:DescribeLogStreams
+            - logs:PutLogEvents
+            - logs:GetLogEvents
+            - logs:FilterLogEvents
+            Resource: "*"
+      RoleName:
+        Fn::Join:
+        - ''
+        - - !Ref AWS::Region
+          - "-"
+          - roles_workspaces_cwlogging
+  workspacesAPIAccount:
+    Type: AWS::ApiGateway::Account
+    DependsOn: workspacesAPICWRole
+    Properties:
+      CloudWatchRoleArn:
+        Fn::GetAtt:
+        - workspacesAPICWRole
+        - Arn
+  workspacesAPI:
+    Type: AWS::ApiGateway::RestApi
+    DependsOn: workspacesAPIAccount
+    Properties:
+      ApiKeySourceType: HEADER
+      Description: workspaces SSM Activation Enabler
+      EndpointConfiguration:
+        Types:
+        - PRIVATE
+      FailOnWarnings: true
+      Name: workspacesSSMActivator
+      Policy:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal: "*"
+          Action: execute-api:Invoke
+          Resource: "execute-api:/*"
+        - Effect: Deny
+          Principal: "*"
+          Action: execute-api:Invoke        
+          Resource: "execute-api:/*"
+          Condition:
+            StringNotEquals: 
+                 'aws:SourceVpce': { Fn::ImportValue: EUCVPCEndpointAPI }         
+  workspacesAPIStage:
+    Type: AWS::ApiGateway::Stage
+    DependsOn: workspacesAPI
+    Properties:
+      DeploymentId:
+        Ref: workspacesAPIDeployment
+      MethodSettings:
+      - DataTraceEnabled: true
+        HttpMethod: "*"
+        LoggingLevel: INFO
+        ResourcePath: "/*"
+      RestApiId:
+        Ref: workspacesAPI
+      StageName: Prod
+  workspacesAPIMethod:
+    Type: AWS::ApiGateway::Method
+    DependsOn: workspacesAPI
+    Properties:
+      AuthorizationType: NONE
+      HttpMethod: GET
+      Integration:
+        Type: AWS_PROXY
+        IntegrationHttpMethod: POST
+        Uri:
+          !Sub 
+            - 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${lambdafuncarn}:live/invocations'
+            - lambdafuncarn: !GetAtt LAMBDAFunction.Arn
+      ResourceId:
+        Fn::GetAtt:
+        - workspacesAPI
+        - RootResourceId
+      RestApiId:
+        Ref: workspacesAPI
+      MethodResponses:
+      - StatusCode: 200
+  workspacesAPIDeployment:
+    Type: AWS::ApiGateway::Deployment
+    DependsOn: workspacesAPIMethod
+    Properties:
+      RestApiId:
+        Ref: workspacesAPI
+      StageName: dummy-do-not-use
+Outputs:
+  oEucAPIEndPoint:
+    Value:
+      !Sub
+        - 'https://${myapi}.execute-api.${AWS::Region}.amazonaws.com/Prod'
+        - myapi: !Ref workspacesAPI
+    Description: This Private API can be used to request SSM activation for WorkSpaces
+    Export:
+      Name: SSMActivationAPIEndPoint      
+     

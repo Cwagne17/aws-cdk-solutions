@@ -54,6 +54,11 @@ export class VpcStack extends cdk.Stack {
       stringValue: this.vpc.vpcId,
     });
 
+    new ssm.StringParameter(this, "rVpcCidrParam", {
+      parameterName: SSM_PARAM.VPC_CIDR,
+      stringValue: this.vpc.vpcCidrBlock,
+    });
+
     new ssm.StringListParameter(this, "rDirectorySubnetIdsParam", {
       parameterName: SSM_PARAM.DIRECTORY_SUBNET_IDS,
       stringListValue: this.vpc

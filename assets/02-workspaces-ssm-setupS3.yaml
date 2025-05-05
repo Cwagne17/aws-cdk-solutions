@@ -1,0 +1,73 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: WorkSpaces and SSM - S3 bucket setup template for WorkSpaces inventory
+Resources:
+  WorkSpacesSSMInventoryBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      AccessControl: Private
+      BucketName:
+        Fn::Join:
+        - "-"
+        - - s3
+          - Ref: AWS::AccountId
+          - ssm-inventory-bucket
+  WorkSpacesSSMInventoryBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket:
+        Ref: WorkSpacesSSMInventoryBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Sid: SSMBucketPermissionsCheck
+          Effect: Allow
+          Principal:
+            Service: ssm.amazonaws.com
+          Action: s3:GetBucketAcl
+          Resource:
+            Fn::Join:
+            - ''
+            - - 'arn:aws:s3:::'
+              - Ref: WorkSpacesSSMInventoryBucket
+        - Sid: " SSMBucketDelivery"
+          Effect: Allow
+          Principal:
+            Service: ssm.amazonaws.com
+          Action: s3:PutObject
+          Resource:
+          - Fn::Join:
+            - ''
+            - - 'arn:aws:s3:::'
+              - Ref: WorkSpacesSSMInventoryBucket
+              - "/*/accountid="
+              - Ref: AWS::AccountId
+              - "/*"
+          Condition:
+            StringEquals:
+              s3:x-amz-acl: bucket-owner-full-control
+        - Sid: Access-to-specific-VPCE
+          Effect: Allow
+          Principal: "*"
+          Action: s3:*
+          Resource:
+          - Fn::Join:
+            - ''
+            - - 'arn:aws:s3:::'
+              - Ref: WorkSpacesSSMInventoryBucket
+              - "/scripts/*"
+          - Fn::Join:
+            - ''
+            - - 'arn:aws:s3:::'
+              - Ref: WorkSpacesSSMInventoryBucket
+              - "/agents/*"
+          Condition:
+            StringEquals:
+              aws:sourceVpce:
+                Fn::ImportValue: EUCVPCS3EndpointId
+Outputs:
+  oWorkSpacesSSMInventoryBucket:
+    Value:
+      Ref: WorkSpacesSSMInventoryBucket
+    Description: This S3 bucket holds the WorkSpaces inventory data for SSM
+    Export:
+      Name: WorkSpacesSSMInventoryBucket
