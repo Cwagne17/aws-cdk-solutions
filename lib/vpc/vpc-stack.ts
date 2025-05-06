@@ -13,6 +13,10 @@ export class VpcStack extends cdk.Stack {
   readonly eksNodeGroupSubnets: ec2.ISubnet[];
   readonly ingressSubnets: ec2.ISubnet[];
   readonly logGroup: logs.LogGroup;
+  readonly apiGatewayEndpoint: ec2.InterfaceVpcEndpoint;
+  readonly ssmEndpoint: ec2.InterfaceVpcEndpoint;
+  readonly ssmMessagesEndpoint: ec2.InterfaceVpcEndpoint;
+  readonly s3Endpoint: ec2.GatewayVpcEndpoint;
 
   constructor(scope: Construct, id: string, props: cdk.StackProps) {
     super(scope, id, props);
@@ -68,22 +72,13 @@ export class VpcStack extends cdk.Stack {
       stringValue: this.vpc.vpcCidrBlock,
     });
 
+    // Set up subnets
     this.activeDirectorySubnets = this.vpc.selectSubnets({
       subnetGroupName: SUBNET_NAMES.ACTIVE_DIRECTORY,
     }).subnets;
     new ssm.StringListParameter(this, "rDirectorySubnetIdsParam", {
       parameterName: SSM_PARAM.DIRECTORY_SUBNET_IDS,
       stringListValue: this.activeDirectorySubnets.map(
-        (subnet) => subnet.subnetId
-      ),
-    });
-
-    this.eksNodeGroupSubnets = this.vpc.selectSubnets({
-      subnetGroupName: SUBNET_NAMES.EKS_NODE_GROUP,
-    }).subnets;
-    new ssm.StringListParameter(this, "rEksNodeGroupSubnetIdsParam", {
-      parameterName: SSM_PARAM.EKS_NODE_GROUP_SUBNET_IDS,
-      stringListValue: this.eksNodeGroupSubnets.map(
         (subnet) => subnet.subnetId
       ),
     });
@@ -96,6 +91,16 @@ export class VpcStack extends cdk.Stack {
       stringListValue: this.workspaceSubnets.map((subnet) => subnet.subnetId),
     });
 
+    this.eksNodeGroupSubnets = this.vpc.selectSubnets({
+      subnetGroupName: SUBNET_NAMES.EKS_NODE_GROUP,
+    }).subnets;
+    new ssm.StringListParameter(this, "rEksNodeGroupSubnetIdsParam", {
+      parameterName: SSM_PARAM.EKS_NODE_GROUP_SUBNET_IDS,
+      stringListValue: this.eksNodeGroupSubnets.map(
+        (subnet) => subnet.subnetId
+      ),
+    });
+
     this.ingressSubnets = this.vpc.selectSubnets({
       subnetGroupName: SUBNET_NAMES.INGRESS,
     }).subnets;
@@ -103,6 +108,70 @@ export class VpcStack extends cdk.Stack {
       parameterName: SSM_PARAM.INGRESS_SUBNET_IDS,
       stringListValue: this.ingressSubnets.map((subnet) => subnet.subnetId),
     });
+
+    // Create VPC endpoints security group
+    const vpcEndpointsSecurityGroup = new ec2.SecurityGroup(
+      this,
+      "rVpcEndpointsSecurityGroup",
+      {
+        vpc: this.vpc,
+        description: "Security group for VPC Endpoints",
+        allowAllOutbound: true,
+        securityGroupName: generateResourceName({
+          stack: this,
+          usage: "vpcendpoints",
+          resource: "sg",
+        }),
+      }
+    );
+    vpcEndpointsSecurityGroup.addIngressRule(
+      ec2.Peer.ipv4(this.vpc.vpcCidrBlock),
+      ec2.Port.tcp(443),
+      "Allow HTTPS traffic from VPC CIDR"
+    );
+
+    // Create VPC Endpoints with private DNS enabled
+    this.apiGatewayEndpoint = new ec2.InterfaceVpcEndpoint(
+      this,
+      "rAPIGatewayEndpoint",
+      {
+        vpc: this.vpc,
+        service: ec2.InterfaceVpcEndpointAwsService.APIGATEWAY,
+        subnets: { subnets: this.workspaceSubnets },
+        privateDnsEnabled: true,
+        securityGroups: [vpcEndpointsSecurityGroup],
+      }
+    );
+
+    this.ssmEndpoint = new ec2.InterfaceVpcEndpoint(this, "rSSMEndpoint", {
+      vpc: this.vpc,
+      service: ec2.InterfaceVpcEndpointAwsService.SSM,
+      subnets: { subnets: this.workspaceSubnets },
+      privateDnsEnabled: true,
+      securityGroups: [vpcEndpointsSecurityGroup],
+    });
+
+    this.ssmMessagesEndpoint = new ec2.InterfaceVpcEndpoint(
+      this,
+      "rSSMMessagesEndpoint",
+      {
+        vpc: this.vpc,
+        service: ec2.InterfaceVpcEndpointAwsService.SSM_MESSAGES,
+        subnets: { subnets: this.workspaceSubnets },
+        privateDnsEnabled: true,
+        securityGroups: [vpcEndpointsSecurityGroup],
+      }
+    );
+
+    this.s3Endpoint = new ec2.GatewayVpcEndpoint(this, "rS3Endpoint", {
+      vpc: this.vpc,
+      service: ec2.GatewayVpcEndpointAwsService.S3,
+    });
+
+    // Add dependencies to ensure sequential creation
+    this.ssmEndpoint.node.addDependency(this.apiGatewayEndpoint);
+    this.ssmMessagesEndpoint.node.addDependency(this.ssmEndpoint);
+    this.s3Endpoint.node.addDependency(this.ssmMessagesEndpoint);
   }
 
   /**

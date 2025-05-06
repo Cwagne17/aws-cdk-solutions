@@ -7,11 +7,12 @@ import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as logs from "aws-cdk-lib/aws-logs";
 import { Construct } from "constructs";
-import { generateResourceName, SSM_PARAM } from "../util";
+import { generateResourceName } from "../util";
 import * as path from "path";
 
 interface WorkspacesSSMActivationStackProps extends cdk.StackProps {
-  vpc: ec2.IVpc;
+  apiGatewayEndpoint: ec2.InterfaceVpcEndpoint;
+  s3Endpoint: ec2.GatewayVpcEndpoint;
 }
 
 export class WorkspacesSSMActivationStack extends cdk.Stack {
@@ -21,82 +22,31 @@ export class WorkspacesSSMActivationStack extends cdk.Stack {
     props: WorkspacesSSMActivationStackProps
   ) {
     super(scope, id, props);
-
-    const vpc = props.vpc;
-
-    const vpcCidr = ssm.StringParameter.valueForTypedStringParameterV2(
-      this,
-      SSM_PARAM.VPC_CIDR
-    );
-
-    const workspaceSubnetIds =
-      ssm.StringListParameter.valueForTypedListParameter(
-        this,
-        SSM_PARAM.WORKSPACE_SUBNET_IDS
-      );
-    const workspaceSubnets = workspaceSubnetIds.map((subnetId) =>
-      ec2.Subnet.fromSubnetId(this, `rSubnet-${subnetId}`, subnetId)
-    );
-
-    const vpcEndpointsSecurityGroup = new ec2.SecurityGroup(
-      this,
-      "rVpcEndpointsSecurityGroup",
-      {
-        vpc: vpc,
-        description: "Security group for VPC Endpoints",
-        allowAllOutbound: true,
-        securityGroupName: generateResourceName({
-          stack: this,
-          usage: "vpcendpoints",
-          resource: "sg",
-        }),
-      }
-    );
-    vpcEndpointsSecurityGroup.addIngressRule(
-      ec2.Peer.ipv4(vpcCidr),
-      ec2.Port.tcp(443),
-      "Allow HTTPS traffic from VPC CIDR"
-    );
-
-    // VPC Endpoints
-    const apiGatewayEndpoint = new ec2.InterfaceVpcEndpoint(
-      this,
-      "rAPIGatewayEndpoint",
-      {
-        vpc: vpc,
-        service: ec2.InterfaceVpcEndpointAwsService.APIGATEWAY,
-        subnets: { subnets: workspaceSubnets },
-        privateDnsEnabled: true,
-        securityGroups: [vpcEndpointsSecurityGroup],
-      }
-    );
-
-    new ec2.InterfaceVpcEndpoint(this, "rSSMEndpoint", {
-      vpc: vpc,
-      service: ec2.InterfaceVpcEndpointAwsService.SSM,
-      subnets: { subnets: workspaceSubnets },
-      privateDnsEnabled: true,
-      securityGroups: [vpcEndpointsSecurityGroup],
-    });
-
-    new ec2.InterfaceVpcEndpoint(this, "rSSMMessagesEndpoint", {
-      vpc: vpc,
-      service: ec2.InterfaceVpcEndpointAwsService.SSM_MESSAGES,
-      subnets: { subnets: workspaceSubnets },
-      privateDnsEnabled: true,
-      securityGroups: [vpcEndpointsSecurityGroup],
-    });
-
-    const s3Endpoint = new ec2.GatewayVpcEndpoint(this, "rS3Endpoint", {
-      vpc: vpc,
-      service: ec2.GatewayVpcEndpointAwsService.S3,
-    });
+    const apiGatewayEndpoint = props.apiGatewayEndpoint;
+    const s3Endpoint = props.s3Endpoint;
 
     // S3 Bucket for SSM Inventory
     const inventoryBucket = new s3.Bucket(this, "rSSMInventoryBucket", {
-      bucketName: `ssm-inventory-bucket-${this.account}`,
+      bucketName: generateResourceName({
+        stack: this,
+        usage: "ssm-inventory",
+        resource: "bucket",
+      }),
       removalPolicy: cdk.RemovalPolicy.DESTROY,
     });
+
+    // Add bucket policy for SSM Inventory
+    inventoryBucket.addToResourcePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        principals: [new iam.ServicePrincipal("ssm.amazonaws.com")],
+        actions: ["s3:GetBucketAcl", "s3:PutObject", "s3:PutObjectAcl"],
+        resources: [
+          inventoryBucket.bucketArn,
+          `${inventoryBucket.bucketArn}/*`,
+        ],
+      })
+    );
 
     // IAM Roles
     new iam.Role(this, "rSSMMaintenanceRole", {
@@ -150,17 +100,24 @@ export class WorkspacesSSMActivationStack extends cdk.Stack {
     });
 
     // SSM Resource Data Sync
-    new ssm.CfnResourceDataSync(this, "rResourceDataSync", {
-      syncName: generateResourceName({
-        usage: "workspaces-ssm",
-        resource: "datasync",
-      }),
-      s3Destination: {
-        bucketName: inventoryBucket.bucketName,
-        bucketRegion: this.region,
-        syncFormat: "JsonSerDe",
-      },
-    });
+    const inventorySync = new ssm.CfnResourceDataSync(
+      this,
+      "rResourceDataSync",
+      {
+        syncName: generateResourceName({
+          usage: "workspaces-ssm",
+          resource: "datasync",
+        }),
+        s3Destination: {
+          bucketName: inventoryBucket.bucketName,
+          bucketRegion: this.region,
+          syncFormat: "JsonSerDe",
+        },
+      }
+    );
+
+    // Make sure the resource data sync is created after the bucket
+    inventorySync.node.addDependency(inventoryBucket);
 
     // SSM Patch Baselines
     new ssm.CfnPatchBaseline(this, "rWindowsPatchBaseline", {
@@ -297,10 +254,31 @@ export class WorkspacesSSMActivationStack extends cdk.Stack {
       }
     );
 
+    // Add SSM and IAM permissions to Lambda role
+    activationFunction.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: [
+          "ssm:DescribeActivations",
+          "ssm:CreateActivation",
+          "ssm:DeleteActivation",
+        ],
+        resources: ["*"],
+      })
+    );
+
+    activationFunction.addToRolePolicy(
+      new iam.PolicyStatement({
+        effect: iam.Effect.ALLOW,
+        actions: ["iam:PassRole"],
+        resources: [ssmInstanceRole.roleArn],
+      })
+    );
+
     // Lambda Version and Alias
     const version = new lambda.Version(this, "rActivationFunctionVersion", {
       lambda: activationFunction,
-      description: "v1",
+      description: "$LATEST",
     });
 
     const alias = new lambda.Alias(this, "rActivationFunctionAlias", {

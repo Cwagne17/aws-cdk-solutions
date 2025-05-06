@@ -31,7 +31,8 @@ const workspaceSsmActiviation = new WorkspacesSSMActivationStack(
   `${projectName}WorkspaceSSMActivation`,
   {
     ...props,
-    vpc: vpc.vpc,
+    apiGatewayEndpoint: vpc.apiGatewayEndpoint,
+    s3Endpoint: vpc.s3Endpoint,
   }
 );
 
