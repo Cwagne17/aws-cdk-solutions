@@ -11,7 +11,7 @@ import {
   DescribeWorkspaceDirectoriesCommand,
   WorkSpacesClient,
 } from "@aws-sdk/client-workspaces";
-import { SSM_PARAM as DIRECTORY_SSM_PARAM } from "../lib/directory/constants";
+import { SSM_PARAM } from "../lib/util";
 import { getParameter } from "./shared";
 import generator from "generate-password-ts";
 const region = process.env.AWS_REGION ?? "us-east-1"; // Default to us-east-1 if not set
@@ -25,12 +25,12 @@ interface User {
 
 async function createUser(user: User): Promise<void> {
   const directoryId = await getParameter(
-    DIRECTORY_SSM_PARAM.DIRECTORY_ID,
+    SSM_PARAM.DIRECTORY_SERVICE.DIRECTORY_ID,
     region
   );
   if (!directoryId) {
     throw new Error(
-      `ERROR: Directory Id does not exist: ${DIRECTORY_SSM_PARAM.DIRECTORY_ID}`
+      `ERROR: Directory Id does not exist: ${SSM_PARAM.DIRECTORY_SERVICE.DIRECTORY_ID}`
     );
   }
 

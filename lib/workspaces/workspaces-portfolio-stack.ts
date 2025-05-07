@@ -4,6 +4,7 @@ import * as servicecatalog from "aws-cdk-lib/aws-servicecatalog";
 import * as iam from "aws-cdk-lib/aws-iam";
 import { Construct } from "constructs";
 import { WorkspacesProductStack } from "./workspaces-product-stack";
+import { generateResourceName } from "../util";
 
 export class WorkspacesPortfolioStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: cdk.StackProps) {
@@ -13,7 +14,10 @@ export class WorkspacesPortfolioStack extends cdk.Stack {
       this,
       "rDeveloperEnvironmentPortfolio",
       {
-        displayName: "Developer Environment Portfolio",
+        displayName: generateResourceName({
+          usage: "developer",
+          resource: "portfolio",
+        }),
         providerName: "Christopher Wagner",
         description: "TBD",
       }
@@ -26,8 +30,6 @@ export class WorkspacesPortfolioStack extends cdk.Stack {
       "AWSReservedSSO_AdministratorAccess_c3b8f24c5741a01a"
     );
     portfolio.giveAccessToRole(adminSSORole);
-
-    console.log(version);
 
     const productStackHistory = new servicecatalog.ProductStackHistory(
       this,
@@ -43,7 +45,10 @@ export class WorkspacesPortfolioStack extends cdk.Stack {
       this,
       "rDeveloperWorkspaceProduct",
       {
-        productName: "Private Developer Workspace",
+        productName: generateResourceName({
+          usage: "developer",
+          resource: "workspace-product",
+        }),
         owner: "Christopher Wagner",
         productVersions: [productStackHistory.currentVersion()],
       }
