@@ -3,7 +3,7 @@ import * as cdk from "aws-cdk-lib";
 import { WorkspacesPortfolioStack } from "../lib/workspaces";
 import { VpcStack } from "../lib/vpc";
 import { ActiveDirectoryStack } from "../lib/directory";
-import { WorkspacesSSMActivationStack } from "../lib/ssm";
+import { WorkspacesActivationStack } from "../lib/ssm";
 
 const app = new cdk.App();
 
@@ -26,13 +26,12 @@ const portfolio = new WorkspacesPortfolioStack(
   props
 );
 
-const workspaceSsmActiviation = new WorkspacesSSMActivationStack(
+const workspaceActiviation = new WorkspacesActivationStack(
   app,
   `${projectName}WorkspaceSSMActivation`,
   {
     ...props,
     apiGatewayEndpoint: vpc.apiGatewayEndpoint,
-    s3Endpoint: vpc.s3Endpoint,
   }
 );
 
@@ -46,7 +45,7 @@ portfolio.addDependency(
   "The portfolio depends on the Directory Id SSM param to exist."
 );
 
-workspaceSsmActiviation.addDependency(
+workspaceActiviation.addDependency(
   vpc,
-  "The workspace SSM activation depends on the VPC SSM params to exist."
+  "The workspace activation stack depends on the VPC API endpoint to exist."
 );

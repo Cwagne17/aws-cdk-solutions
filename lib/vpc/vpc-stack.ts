@@ -63,12 +63,12 @@ export class VpcStack extends cdk.Stack {
 
     // Create SSM Parameters
     new ssm.StringParameter(this, "rVpcIdParam", {
-      parameterName: SSM_PARAM.VPC_ID,
+      parameterName: SSM_PARAM.VPC.VPC_ID,
       stringValue: this.vpc.vpcId,
     });
 
     new ssm.StringParameter(this, "rVpcCidrParam", {
-      parameterName: SSM_PARAM.VPC_CIDR,
+      parameterName: SSM_PARAM.VPC.VPC_CIDR,
       stringValue: this.vpc.vpcCidrBlock,
     });
 
@@ -77,7 +77,7 @@ export class VpcStack extends cdk.Stack {
       subnetGroupName: SUBNET_NAMES.ACTIVE_DIRECTORY,
     }).subnets;
     new ssm.StringListParameter(this, "rDirectorySubnetIdsParam", {
-      parameterName: SSM_PARAM.DIRECTORY_SUBNET_IDS,
+      parameterName: SSM_PARAM.DIRECTORY_SERVICE.SUBNET_IDS,
       stringListValue: this.activeDirectorySubnets.map(
         (subnet) => subnet.subnetId
       ),
@@ -87,7 +87,7 @@ export class VpcStack extends cdk.Stack {
       subnetGroupName: SUBNET_NAMES.WORKSPACE,
     }).subnets;
     new ssm.StringListParameter(this, "rWorkspaceSubnetIdsParam", {
-      parameterName: SSM_PARAM.WORKSPACE_SUBNET_IDS,
+      parameterName: SSM_PARAM.WORKSPACES.SUBNET_IDS,
       stringListValue: this.workspaceSubnets.map((subnet) => subnet.subnetId),
     });
 
@@ -95,7 +95,7 @@ export class VpcStack extends cdk.Stack {
       subnetGroupName: SUBNET_NAMES.EKS_NODE_GROUP,
     }).subnets;
     new ssm.StringListParameter(this, "rEksNodeGroupSubnetIdsParam", {
-      parameterName: SSM_PARAM.EKS_NODE_GROUP_SUBNET_IDS,
+      parameterName: SSM_PARAM.EKS.NODE_GROUP_SUBNET_IDS,
       stringListValue: this.eksNodeGroupSubnets.map(
         (subnet) => subnet.subnetId
       ),
@@ -105,7 +105,7 @@ export class VpcStack extends cdk.Stack {
       subnetGroupName: SUBNET_NAMES.INGRESS,
     }).subnets;
     new ssm.StringListParameter(this, "rIngressSubnetIdsParam", {
-      parameterName: SSM_PARAM.INGRESS_SUBNET_IDS,
+      parameterName: SSM_PARAM.VPC.INGRESS_SUBNET_IDS,
       stringListValue: this.ingressSubnets.map((subnet) => subnet.subnetId),
     });
 
@@ -118,7 +118,6 @@ export class VpcStack extends cdk.Stack {
         description: "Security group for VPC Endpoints",
         allowAllOutbound: true,
         securityGroupName: generateResourceName({
-          stack: this,
           usage: "vpcendpoints",
           resource: "sg",
         }),

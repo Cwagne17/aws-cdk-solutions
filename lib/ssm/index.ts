@@ -1,1 +1,2 @@
-export * from "./workspaces-ssm-activation-stack";
+export * from "./workspaces-activation-stack";
+export * from "./inventory";

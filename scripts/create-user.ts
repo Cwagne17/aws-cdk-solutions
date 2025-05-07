@@ -24,10 +24,13 @@ interface User {
 }
 
 async function createUser(user: User): Promise<void> {
-  const directoryId = await getParameter(SSM_PARAM.DIRECTORY_ID, region);
+  const directoryId = await getParameter(
+    SSM_PARAM.DIRECTORY_SERVICE.DIRECTORY_ID,
+    region
+  );
   if (!directoryId) {
     throw new Error(
-      `ERROR: Directory Id does not exist: ${SSM_PARAM.DIRECTORY_ID}`
+      `ERROR: Directory Id does not exist: ${SSM_PARAM.DIRECTORY_SERVICE.DIRECTORY_ID}`
     );
   }
 

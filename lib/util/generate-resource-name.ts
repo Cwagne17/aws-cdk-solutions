@@ -1,5 +1,4 @@
-import { Environment, RegionCode } from "./constants";
-import * as cdk from "aws-cdk-lib";
+import { Environment, Region } from "./constants";
 
 /**
  * Interface for resource naming parameters
@@ -28,21 +27,33 @@ export interface ResourceNamingProps {
   resource: string;
 
   /**
-   * Resource region code (e.g. use1, usw1)
-   * Will be automatically determined from Stack's region if not provided
-   * @see {@link RegionCode}
+   * The region where the resource is deployed.
+   * @default undefined
+   * @see {@link Region}
    */
-  region?: RegionCode;
+  region?: string;
 
   /**
    * Random suffix
    */
   suffix?: string;
+}
 
-  /**
-   * Optional Stack to determine region from, if region is not provided
-   */
-  stack?: cdk.Stack;
+/**
+ * Retrieves the short name for the given AWS region.
+ *
+ * @param region The AWS region to get the short name for.
+ * @returns The short name of the region.
+ */
+export function getRegionShortName(region: string): string {
+  switch (region) {
+    case Region.US_EAST_1:
+      return "use1";
+    case Region.US_WEST_1:
+      return "usw1";
+    default:
+      throw new Error(`Unsupported region: ${region}`);
+  }
 }
 
 /**
@@ -61,25 +72,10 @@ function validateComponent(
 }
 
 /**
- * Maps an AWS region to the corresponding RegionCode
- */
-function getRegionCode(region: string): RegionCode {
-  switch (region) {
-    case "us-east-1":
-      return RegionCode.US_EAST_1;
-    case "us-west-1":
-      return RegionCode.US_WEST_1;
-    default:
-      throw new Error(`Unsupported region: ${region}`);
-  }
-}
-
-/**
  * Generates a standardized AWS resource name following the pattern:
- * [prefix-]<usage>-<env>-<resource>[-location][-suffix]
+ * [prefix-]<usage>-<env>-<resource>[-region][-suffix]
  *
  * If env is not provided, defaults to Environment.DEV
- * If location is not provided, attempts to determine it from the stack's region
  */
 export function generateResourceName(props: ResourceNamingProps): string {
   if (props.prefix) {
@@ -90,15 +86,8 @@ export function generateResourceName(props: ResourceNamingProps): string {
 
   const env = props.env ?? Environment.DEV;
 
-  // Sets the
-  let region = props.region;
-  if (!region && props.stack) {
-    region = getRegionCode(props.stack.region);
-  }
-
-  if (region) {
-    validateComponent(region, /^[a-z0-9]{1,6}$/, "region");
-  }
+  // Transforms the region to the short name if provided
+  const region = props.region ? getRegionShortName(props.region) : undefined;
 
   if (props.suffix) {
     validateComponent(props.suffix, /^[a-z0-9]{12}$/, "suffix");

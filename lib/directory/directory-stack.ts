@@ -54,7 +54,7 @@ export class ActiveDirectoryStack extends cdk.Stack {
     );
 
     new ssm.StringParameter(this, "rWorkspaceSubnetIdsParam", {
-      parameterName: SSM_PARAM.DIRECTORY_ID,
+      parameterName: SSM_PARAM.DIRECTORY_SERVICE.DIRECTORY_ID,
       stringValue: directory.ref,
     });
 

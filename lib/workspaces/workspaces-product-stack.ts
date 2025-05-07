@@ -41,7 +41,7 @@ export class WorkspacesProductStack extends servicecatalog.ProductStack {
 
     const directoryId = ssm.StringParameter.valueForTypedStringParameterV2(
       this,
-      SSM_PARAM.DIRECTORY_ID
+      SSM_PARAM.DIRECTORY_SERVICE.DIRECTORY_ID
     );
 
     this.templateOptions.metadata = {
