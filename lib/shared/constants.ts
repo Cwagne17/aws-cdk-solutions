@@ -1,3 +1,5 @@
+import { Globals } from "../core";
+
 /**
  * Supported environments types
  */
@@ -19,10 +21,7 @@ export enum Region {
 /**
  * SSM Constants
  */
-// TODO: Update params prefix to dynamically include the environment
-// i.e dev, test, staging, prod that way we can differentiate the
-// parameters based on the environment
-const params_prefix = `/developer-environment-platform/${Environment.DEV}`;
+const params_prefix = `/developer-environment-platform/${Globals.environment}`;
 export const SSM_PARAM = {
   VPC: {
     VPC_ID: `${params_prefix}/vpc_id`,
