@@ -4,16 +4,34 @@ import { VpcStack } from "../vpc";
 import { ActiveDirectoryStack } from "../directory";
 import { WorkspacesPortfolioStack } from "../workspaces";
 import { WorkspacesActivationStack } from "../ssm";
+import { GlobalConfig, Globals } from "./globals";
+
+export interface DeveloperPlatformStageProps
+  extends GlobalConfig,
+    cdk.StageProps {}
 
 export class DeveloperPlatformStage extends cdk.Stage {
   readonly vpcStack: VpcStack;
 
-  constructor(scope: Construct, id: string, props?: cdk.StageProps) {
+  constructor(
+    scope: Construct,
+    id: string,
+    props: DeveloperPlatformStageProps
+  ) {
     super(scope, id, props);
 
-    const vpc = new VpcStack(this, `Vpc`, props);
+    Globals.initialize({
+      account: props.account,
+      region: props.region,
+      environment: props.environment,
+    });
+
+    const stackProps = { env: { region: Globals.region } };
+
+    const vpc = new VpcStack(this, `Vpc`, stackProps);
 
     const directory = new ActiveDirectoryStack(this, `Directory`, {
+      ...stackProps,
       vpc: vpc.vpc,
       subnets: vpc.activeDirectorySubnets,
     });
@@ -32,6 +50,7 @@ export class DeveloperPlatformStage extends cdk.Stage {
       this,
       `WorkspaceSSMActivation`,
       {
+        ...stackProps,
         apiGatewayEndpoint: vpc.apiGatewayEndpoint,
       }
     );

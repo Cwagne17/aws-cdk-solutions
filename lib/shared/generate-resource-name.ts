@@ -44,7 +44,7 @@ export function generateResourceName(description: string): string {
     validateComponent(Globals.prefix, /^[a-z0-9]{6}$/, "prefix");
   }
 
-  validateComponent(description, /^[a-z0-9-]$/, "usage");
+  validateComponent(description, /^[a-z0-9-]{1,30}$/, "usage");
 
   // Transforms the region to the short name if provided
   const region = getRegionShortName(Globals.region);

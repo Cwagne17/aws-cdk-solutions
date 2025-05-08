@@ -1,28 +1,28 @@
-import { Fact, RegionInfo } from "aws-cdk-lib/region-info";
+import { RegionInfo } from "aws-cdk-lib/region-info";
 import { Environment } from "../shared";
 
 export interface GlobalConfig {
   /**
    * The 12 digit AWS account id
    */
-  readonly account: string;
+  account: string;
 
   /**
-   * The region where the resource is deployed.
+   * The AWS region to deploy resources in
    */
-  readonly region: string;
+  region: string;
 
   /**
    * Environment (e.g. prod, dev, test, staging)
    * @default Environment.DEV
    * @see {@link Environment}
    */
-  readonly environment: Environment;
+  environment?: Environment;
 
   /**
    * Short prerfix for all resources
    */
-  readonly prefix?: string;
+  prefix?: string;
 }
 
 export class Globals {
@@ -34,14 +34,13 @@ export class Globals {
     }
 
     // Checks that the region exists
-    if (Fact.regions.includes(config.region)) {
+    const region = RegionInfo.get(config.region);
+    if (!region) {
       throw new Error(`Invalid AWS region: ${config.region} does not exist`);
     }
 
-    // Checks that the region is opted-in
-    if (!RegionInfo.get(config.region).isOptInRegion) {
-      throw new Error(`Invalid AWS region: ${config.region} is not opted in`);
-    }
+    // Set the default value for the environment to Dev
+    config.environment = config.environment ?? Environment.DEV;
 
     this.config = config;
   }
@@ -55,7 +54,7 @@ export class Globals {
   }
 
   static get environment(): string {
-    return this.config.environment;
+    return this.config.environment!;
   }
 
   static get prefix(): string | undefined {
