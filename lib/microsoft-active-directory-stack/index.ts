@@ -3,9 +3,9 @@ import * as directoryservice from "aws-cdk-lib/aws-directoryservice";
 import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as ssm from "aws-cdk-lib/aws-ssm";
 import { Construct } from "constructs";
-import { SSM_PARAM } from "../util";
+import { SSM_PARAM } from "../shared";
 
-export interface ActiveDirectoryStackProps extends cdk.StackProps {
+export interface MicrosoftActiveDirectoryStackProps extends cdk.StackProps {
   /**
    * The VPC in which to create the Microsoft Active Directory.
    * @default - No VPC is specified.
@@ -27,8 +27,12 @@ export interface ActiveDirectoryStackProps extends cdk.StackProps {
  * @param {string} id - The stack ID.
  * @param {Construct} scope - The scope in which this stack is defined.
  */
-export class ActiveDirectoryStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props: ActiveDirectoryStackProps) {
+export class MicrosoftActiveDirectoryStack extends cdk.Stack {
+  constructor(
+    scope: Construct,
+    id: string,
+    props: MicrosoftActiveDirectoryStackProps
+  ) {
     super(scope, id, props);
 
     // Validate that the length of the subnets is 2

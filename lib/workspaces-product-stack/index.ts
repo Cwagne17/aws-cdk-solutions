@@ -9,7 +9,7 @@ import {
   OperatingSystem,
   RunningMode,
 } from "./constants";
-import { SSM_PARAM } from "../util";
+import { SSM_PARAM } from "../shared";
 
 export class WorkspacesProductStack extends servicecatalog.ProductStack {
   constructor(scope: Construct, id: string) {

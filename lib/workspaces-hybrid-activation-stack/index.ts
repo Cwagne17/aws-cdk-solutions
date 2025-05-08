@@ -6,28 +6,28 @@ import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as logs from "aws-cdk-lib/aws-logs";
 import { Construct } from "constructs";
-import { generateResourceName, SSM_PARAM } from "../util";
+import { generateResourceName, SSM_PARAM, Globals } from "../shared";
 import * as path from "path";
-import { Inventory } from "./inventory";
+import { InventoryConstruct } from "../ssm-inventory-construct";
 
-interface WorkspacesActivationStackProps extends cdk.StackProps {
+interface WorkspacesHybridActivationStackProps extends cdk.StackProps {
   apiGatewayEndpoint: ec2.InterfaceVpcEndpoint;
 }
 
-export class WorkspacesActivationStack extends cdk.Stack {
-  readonly inventory: Inventory;
+export class WorkspaceHybridActivationStack extends cdk.Stack {
+  readonly inventory: InventoryConstruct;
 
   constructor(
     scope: Construct,
     id: string,
-    props: WorkspacesActivationStackProps
+    props: WorkspacesHybridActivationStackProps
   ) {
     super(scope, id, props);
     const apiGatewayEndpoint = props.apiGatewayEndpoint;
 
     // Create the SSM Inventory bucket
-    this.inventory = new Inventory(this, "rSSMInventory", {
-      region: this.region,
+    this.inventory = new InventoryConstruct(this, "rSSMInventory", {
+      region: Globals.region,
 
       // Optional properties should be dependent on the environment
       // encryption and data retention should be enabled for persistent
@@ -40,11 +40,7 @@ export class WorkspacesActivationStack extends cdk.Stack {
       this,
       "rWorkspacesSSMInstanceRole",
       {
-        roleName: generateResourceName({
-          usage: "ssm-workspaces-instance",
-          resource: "role",
-          region: this.region,
-        }),
+        roleName: generateResourceName("ssm-workspaces-instance"),
         assumedBy: new iam.ServicePrincipal("ssm.amazonaws.com"),
         managedPolicies: [
           iam.ManagedPolicy.fromAwsManagedPolicyName(
@@ -69,11 +65,7 @@ export class WorkspacesActivationStack extends cdk.Stack {
       })
     );
 
-    const lambdaFunctionName = generateResourceName({
-      usage: "ssm-create-activation",
-      resource: "function",
-      region: this.region,
-    });
+    const lambdaFunctionName = generateResourceName("ssm-create-activation");
 
     // Create a log group for the lambda function
     const activationLogGroup = new logs.LogGroup(
@@ -101,7 +93,7 @@ export class WorkspacesActivationStack extends cdk.Stack {
           path.join(__dirname, "../lambda/ssm-create-activation")
         ),
         environment: {
-          region: this.region,
+          region: Globals.region,
           iamrole: workspacesInstanceRole.roleName,
         },
         logGroup: activationLogGroup,
@@ -117,7 +109,7 @@ export class WorkspacesActivationStack extends cdk.Stack {
           "ssm:CreateActivation",
           "ssm:DeleteActivation",
         ],
-        resources: [`arn:aws:ssm:${this.region}:${this.account}:*`],
+        resources: [`arn:aws:ssm:${Globals.region}:${this.account}:*`],
       })
     );
 
@@ -150,11 +142,7 @@ export class WorkspacesActivationStack extends cdk.Stack {
 
     // API Gateway
     const api = new apigateway.RestApi(this, "rWorkspacesSSMActivationApi", {
-      restApiName: generateResourceName({
-        usage: "workspaces-ssm-activation",
-        resource: "api",
-        region: this.region,
-      }),
+      restApiName: generateResourceName("workspaces-ssm-activation"),
       description: "Workspaces SSM hybrid activation enabler",
       failOnWarnings: true,
 
@@ -198,7 +186,7 @@ export class WorkspacesActivationStack extends cdk.Stack {
     new ssm.StringParameter(this, "rWorkspacesSSMActivationEndpoint", {
       description: "Private API endpoint for SSM activation",
       parameterName: SSM_PARAM.SSM.ACTIVATION_ENDPOINT,
-      stringValue: `https://${api.restApiId}.execute-api.${this.region}.amazonaws.com/prod`,
+      stringValue: `https://${api.restApiId}.execute-api.${Globals.region}.amazonaws.com/prod`,
     });
   }
 }

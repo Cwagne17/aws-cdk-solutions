@@ -1,51 +1,20 @@
 #!/usr/bin/env node
 import * as cdk from "aws-cdk-lib";
-import { WorkspacesPortfolioStack } from "../lib/workspaces";
-import { VpcStack } from "../lib/vpc";
-import { ActiveDirectoryStack } from "../lib/directory";
-import { WorkspacesActivationStack } from "../lib/ssm";
+import { DeveloperPlatformStage } from "../lib/developer-platform-stage";
+import { Environment, Region } from "../lib/shared";
+
+const account = process.env.CDK_DEFAULT_ACCOUNT!;
+const region = process.env.CDK_DEFAULT_REGION ?? Region.US_EAST_1;
 
 const app = new cdk.App();
 
-const projectName = "DeveloperEnvironmentPlatform";
-const props = {
-  env: { region: process.env.CDK_DEFAULT_REGION ?? "us-east-1" },
-};
-
-const vpc = new VpcStack(app, `${projectName}Vpc`, props);
-
-const directory = new ActiveDirectoryStack(app, `${projectName}Directory`, {
-  ...props,
-  vpc: vpc.vpc,
-  subnets: vpc.activeDirectorySubnets,
+new DeveloperPlatformStage(app, "Dev", {
+  account,
+  region,
 });
 
-const portfolio = new WorkspacesPortfolioStack(
-  app,
-  `${projectName}WorkspaceProduct`,
-  props
-);
-
-const workspaceActiviation = new WorkspacesActivationStack(
-  app,
-  `${projectName}WorkspaceSSMActivation`,
-  {
-    ...props,
-    apiGatewayEndpoint: vpc.apiGatewayEndpoint,
-  }
-);
-
-directory.addDependency(
-  vpc,
-  "The directory depends on the Vpc SSM params to exist."
-);
-
-portfolio.addDependency(
-  directory,
-  "The portfolio depends on the Directory Id SSM param to exist."
-);
-
-workspaceActiviation.addDependency(
-  vpc,
-  "The workspace activation stack depends on the VPC API endpoint to exist."
-);
+new DeveloperPlatformStage(app, "Prod", {
+  account,
+  region,
+  environment: Environment.PROD,
+});
