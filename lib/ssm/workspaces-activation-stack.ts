@@ -98,7 +98,7 @@ export class WorkspacesActivationStack extends cdk.Stack {
         runtime: lambda.Runtime.PYTHON_3_9,
         handler: "index.lambda_handler",
         code: lambda.Code.fromAsset(
-          path.join(__dirname, "../lambda/ssm-create-activation")
+          path.join(__dirname, "../../lambda/ssm-create-activation")
         ),
         environment: {
           region: this.region,
