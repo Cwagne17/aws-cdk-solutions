@@ -8,7 +8,7 @@ import * as logs from "aws-cdk-lib/aws-logs";
 import { Construct } from "constructs";
 import { generateResourceName, SSM_PARAM, Globals } from "../shared";
 import * as path from "path";
-import { InventoryConstruct } from "../ssm-inventory-construct";
+import { InventoryConstruct } from "./ssm-inventory-construct";
 
 interface WorkspacesHybridActivationStackProps extends cdk.StackProps {
   apiGatewayEndpoint: ec2.InterfaceVpcEndpoint;
@@ -90,7 +90,7 @@ export class WorkspaceHybridActivationStack extends cdk.Stack {
         runtime: lambda.Runtime.PYTHON_3_9,
         handler: "index.lambda_handler",
         code: lambda.Code.fromAsset(
-          path.join(__dirname, "../lambda/ssm-create-activation")
+          path.join(__dirname, "../../lambda/ssm-create-activation")
         ),
         environment: {
           region: Globals.region,
