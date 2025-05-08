@@ -6,28 +6,27 @@ import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as apigateway from "aws-cdk-lib/aws-apigateway";
 import * as logs from "aws-cdk-lib/aws-logs";
 import { Construct } from "constructs";
-import { generateResourceName, SSM_PARAM } from "../shared";
+import { generateResourceName, SSM_PARAM, Globals } from "../shared";
 import * as path from "path";
-import { Inventory } from "./inventory";
-import { Globals } from "../core";
+import { InventoryConstruct } from "../ssm-inventory-construct";
 
-interface WorkspacesActivationStackProps extends cdk.StackProps {
+interface WorkspacesHybridActivationStackProps extends cdk.StackProps {
   apiGatewayEndpoint: ec2.InterfaceVpcEndpoint;
 }
 
-export class WorkspacesActivationStack extends cdk.Stack {
-  readonly inventory: Inventory;
+export class WorkspaceHybridActivationStack extends cdk.Stack {
+  readonly inventory: InventoryConstruct;
 
   constructor(
     scope: Construct,
     id: string,
-    props: WorkspacesActivationStackProps
+    props: WorkspacesHybridActivationStackProps
   ) {
     super(scope, id, props);
     const apiGatewayEndpoint = props.apiGatewayEndpoint;
 
     // Create the SSM Inventory bucket
-    this.inventory = new Inventory(this, "rSSMInventory", {
+    this.inventory = new InventoryConstruct(this, "rSSMInventory", {
       region: Globals.region,
 
       // Optional properties should be dependent on the environment

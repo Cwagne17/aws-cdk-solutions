@@ -1,4 +1,4 @@
-import { Globals } from "../core";
+import { Globals } from "./globals";
 import { Region } from "./constants";
 
 /**

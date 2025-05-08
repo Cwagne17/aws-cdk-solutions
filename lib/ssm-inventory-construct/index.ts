@@ -6,7 +6,7 @@ import * as ssm from "aws-cdk-lib/aws-ssm";
 import { Construct } from "constructs";
 import { generateResourceName, SSM_PARAM } from "../shared";
 
-export interface InventoryProps {
+export interface InventoryConstructProps {
   /**
    * The region where the S3 bucket will be created.
    */
@@ -36,11 +36,11 @@ export interface InventoryProps {
  * The bucket is configured with lifecycle rules by default to transition
  * objects for cost savings.
  */
-export class Inventory extends Construct {
+export class InventoryConstruct extends Construct {
   readonly bucket: s3.Bucket;
   readonly encryptionKey?: kms.Key;
 
-  constructor(scope: Construct, id: string, props: InventoryProps) {
+  constructor(scope: Construct, id: string, props: InventoryConstructProps) {
     super(scope, id);
 
     // Expand the props and set default values

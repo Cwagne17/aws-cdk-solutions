@@ -1,5 +1,5 @@
 import { RegionInfo } from "aws-cdk-lib/region-info";
-import { Environment } from "../shared";
+import { Environment } from "./constants";
 
 export interface GlobalConfig {
   /**

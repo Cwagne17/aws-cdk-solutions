@@ -1,10 +1,10 @@
 import * as cdk from "aws-cdk-lib";
 import { Construct } from "constructs";
-import { VpcStack } from "../vpc";
-import { ActiveDirectoryStack } from "../directory";
-import { WorkspacesPortfolioStack } from "../workspaces";
-import { WorkspacesActivationStack } from "../ssm";
-import { GlobalConfig, Globals } from "./globals";
+import { VpcStack } from "../vpc-stack";
+import { MicrosoftActiveDirectoryStack } from "../microsoft-active-directory-stack";
+import { WorkspacesPortfolioStack } from "../workspaces-portfolio-stack";
+import { WorkspaceHybridActivationStack } from "../workspaces-hybrid-activation-stack";
+import { GlobalConfig, Globals } from "../shared/globals";
 
 export interface DeveloperPlatformStageProps
   extends GlobalConfig,
@@ -30,7 +30,7 @@ export class DeveloperPlatformStage extends cdk.Stage {
 
     const vpc = new VpcStack(this, `Vpc`, stackProps);
 
-    const directory = new ActiveDirectoryStack(this, `Directory`, {
+    const directory = new MicrosoftActiveDirectoryStack(this, `Directory`, {
       ...stackProps,
       vpc: vpc.vpc,
       subnets: vpc.activeDirectorySubnets,
@@ -46,9 +46,9 @@ export class DeveloperPlatformStage extends cdk.Stage {
       "The portfolio depends on the Directory Id SSM param to exist."
     );
 
-    const workspaceActiviation = new WorkspacesActivationStack(
+    const workspaceActiviation = new WorkspaceHybridActivationStack(
       this,
-      `WorkspaceSSMActivation`,
+      `WorkspaceHybridActivation`,
       {
         ...stackProps,
         apiGatewayEndpoint: vpc.apiGatewayEndpoint,

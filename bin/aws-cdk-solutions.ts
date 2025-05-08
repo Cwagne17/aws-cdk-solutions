@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import * as cdk from "aws-cdk-lib";
-import { DeveloperPlatformStage } from "../lib/core/developer-platform-stage";
+import { DeveloperPlatformStage } from "../lib/developer-platform-stage";
 import { Environment, Region } from "../lib/shared";
 
 const account = process.env.CDK_DEFAULT_ACCOUNT!;

@@ -1,4 +1,4 @@
-import { Globals } from "../core";
+import { Globals } from "./globals";
 
 /**
  * Supported environments types
@@ -21,7 +21,11 @@ export enum Region {
 /**
  * SSM Constants
  */
-const params_prefix = `/developer-environment-platform/${Globals.environment}`;
+// TODO: We should add Globals.environment to the prefix to distinguish different
+// environments. This will fail with current implementaiton because Globals.environment
+// loads on run and won't allow initialization, this will need to move to a function
+// that constructs the path
+const params_prefix = `/developer-environment-platform`;
 export const SSM_PARAM = {
   VPC: {
     VPC_ID: `${params_prefix}/vpc_id`,

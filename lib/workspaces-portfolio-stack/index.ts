@@ -3,7 +3,7 @@ import * as cdk from "aws-cdk-lib";
 import * as servicecatalog from "aws-cdk-lib/aws-servicecatalog";
 import * as iam from "aws-cdk-lib/aws-iam";
 import { Construct } from "constructs";
-import { WorkspacesProductStack } from "./workspaces-product-stack";
+import { WorkspacesProductStack } from "../workspaces-product-stack";
 import { generateResourceName } from "../shared";
 
 export class WorkspacesPortfolioStack extends cdk.Stack {
