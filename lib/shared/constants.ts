@@ -1,5 +1,5 @@
 /**
- * Supported AWS environments
+ * Supported environments types
  */
 export enum Environment {
   DEV = "dev",
@@ -13,7 +13,7 @@ export enum Environment {
  */
 export enum Region {
   US_EAST_1 = "us-east-1",
-  US_WEST_1 = "us-west-1",
+  US_EAST_2 = "us-east-2",
 }
 
 /**

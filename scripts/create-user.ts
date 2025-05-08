@@ -11,7 +11,7 @@ import {
   DescribeWorkspaceDirectoriesCommand,
   WorkSpacesClient,
 } from "@aws-sdk/client-workspaces";
-import { SSM_PARAM } from "../lib/util";
+import { SSM_PARAM } from "../lib/shared";
 import { getParameter } from "./shared";
 import generator from "generate-password-ts";
 const region = process.env.AWS_REGION ?? "us-east-1"; // Default to us-east-1 if not set

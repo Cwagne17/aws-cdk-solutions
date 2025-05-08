@@ -4,7 +4,7 @@ import * as kms from "aws-cdk-lib/aws-kms";
 import * as s3 from "aws-cdk-lib/aws-s3";
 import * as ssm from "aws-cdk-lib/aws-ssm";
 import { Construct } from "constructs";
-import { generateResourceName, SSM_PARAM } from "../util";
+import { generateResourceName, SSM_PARAM } from "../shared";
 
 export interface InventoryProps {
   /**
@@ -64,11 +64,7 @@ export class Inventory extends Construct {
 
     // S3 Bucket for SSM Inventory
     this.bucket = new s3.Bucket(this, "rSSMInventoryBucket", {
-      bucketName: generateResourceName({
-        usage: "ssm-inventory",
-        resource: "bucket",
-        region: region,
-      }),
+      bucketName: generateResourceName("ssm-inventory"),
 
       // If the encryption key is defined, then SSE-KMS will be
       // used. Otherwise, the bucket will be created with SSE-S3.
@@ -132,11 +128,7 @@ export class Inventory extends Construct {
       this,
       "rResourceDataSync",
       {
-        syncName: generateResourceName({
-          usage: "workspaces-ssm",
-          resource: "datasync",
-          region: region,
-        }),
+        syncName: generateResourceName("workspaces-ssm-datasync"),
         s3Destination: {
           bucketName: this.bucket.bucketName,
           bucketRegion: props.region,

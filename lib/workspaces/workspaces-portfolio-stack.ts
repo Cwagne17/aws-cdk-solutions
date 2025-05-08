@@ -4,20 +4,17 @@ import * as servicecatalog from "aws-cdk-lib/aws-servicecatalog";
 import * as iam from "aws-cdk-lib/aws-iam";
 import { Construct } from "constructs";
 import { WorkspacesProductStack } from "./workspaces-product-stack";
-import { generateResourceName } from "../util";
+import { generateResourceName } from "../shared";
 
 export class WorkspacesPortfolioStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
     const portfolio = new servicecatalog.Portfolio(
       this,
       "rDeveloperEnvironmentPortfolio",
       {
-        displayName: generateResourceName({
-          usage: "developer",
-          resource: "portfolio",
-        }),
+        displayName: generateResourceName("developer-portfolio"),
         providerName: "Christopher Wagner",
         description: "TBD",
       }
@@ -45,10 +42,7 @@ export class WorkspacesPortfolioStack extends cdk.Stack {
       this,
       "rDeveloperWorkspaceProduct",
       {
-        productName: generateResourceName({
-          usage: "developer",
-          resource: "workspace-product",
-        }),
+        productName: generateResourceName("developer-workspace-product"),
         owner: "Christopher Wagner",
         productVersions: [productStackHistory.currentVersion()],
       }
