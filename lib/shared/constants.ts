@@ -1,5 +1,7 @@
+import { Globals } from "./globals";
+
 /**
- * Supported AWS environments
+ * Supported environments types
  */
 export enum Environment {
   DEV = "dev",
@@ -13,16 +15,17 @@ export enum Environment {
  */
 export enum Region {
   US_EAST_1 = "us-east-1",
-  US_WEST_1 = "us-west-1",
+  US_EAST_2 = "us-east-2",
 }
 
 /**
  * SSM Constants
  */
-// TODO: Update params prefix to dynamically include the environment
-// i.e dev, test, staging, prod that way we can differentiate the
-// parameters based on the environment
-const params_prefix = `/developer-environment-platform/${Environment.DEV}`;
+// TODO: We should add Globals.environment to the prefix to distinguish different
+// environments. This will fail with current implementaiton because Globals.environment
+// loads on run and won't allow initialization, this will need to move to a function
+// that constructs the path
+const params_prefix = `/developer-environment-platform`;
 export const SSM_PARAM = {
   VPC: {
     VPC_ID: `${params_prefix}/vpc_id`,

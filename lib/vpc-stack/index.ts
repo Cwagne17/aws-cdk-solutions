@@ -3,7 +3,7 @@ import * as ec2 from "aws-cdk-lib/aws-ec2";
 import * as logs from "aws-cdk-lib/aws-logs";
 import * as ssm from "aws-cdk-lib/aws-ssm";
 import { Construct } from "constructs";
-import { generateResourceName, SSM_PARAM } from "../util";
+import { generateResourceName, Region, SSM_PARAM } from "../shared";
 import { SUBNET_NAMES } from "./constants";
 
 export class VpcStack extends cdk.Stack {
@@ -18,16 +18,13 @@ export class VpcStack extends cdk.Stack {
   readonly ssmMessagesEndpoint: ec2.InterfaceVpcEndpoint;
   readonly s3Endpoint: ec2.GatewayVpcEndpoint;
 
-  constructor(scope: Construct, id: string, props: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
     const availabilityZones = this.getWorkspacesAvailabilityZones(this.region);
 
     this.logGroup = new logs.LogGroup(this, "rVpcFlowlogsGroup", {
-      logGroupName: generateResourceName({
-        usage: "vpc",
-        resource: "flowlogs",
-      }),
+      logGroupName: generateResourceName("vpc-flowlogs"),
       retention: logs.RetentionDays.ONE_MONTH,
       logGroupClass: logs.LogGroupClass.INFREQUENT_ACCESS,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
@@ -117,10 +114,7 @@ export class VpcStack extends cdk.Stack {
         vpc: this.vpc,
         description: "Security group for VPC Endpoints",
         allowAllOutbound: true,
-        securityGroupName: generateResourceName({
-          usage: "vpcendpoints",
-          resource: "sg",
-        }),
+        securityGroupName: generateResourceName("vpce-sg"),
       }
     );
     vpcEndpointsSecurityGroup.addIngressRule(
@@ -184,9 +178,9 @@ export class VpcStack extends cdk.Stack {
    */
   getWorkspacesAvailabilityZones(region: string) {
     switch (region) {
-      case "us-east-1":
+      case Region.US_EAST_1:
         return ["us-east-1a", "us-east-1c"];
-      case "us-west-2":
+      case Region.US_EAST_2:
         return ["us-east-2a", "us-east-2b"];
       default:
         throw new cdk.ValidationError(
