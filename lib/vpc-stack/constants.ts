@@ -1,3 +1,4 @@
+// TODO: Move these constants to a centralized file.
 export const SUBNET_NAMES = {
   ACTIVE_DIRECTORY: "active-directory",
   WORKSPACE: "workspace",
