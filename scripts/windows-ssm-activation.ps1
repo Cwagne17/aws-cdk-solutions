@@ -35,11 +35,15 @@ try {
 }
 
 if ((gwmi win32_operatingsystem | select osarchitecture).osarchitecture -eq "64-bit")
-{
+{   
+    # TODO: The whole environment should be self-contained and not rely on external URLs.
+    # This URL should be replaced with a local copy of the installer.
 	$downloadfile = "https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/windows_amd64/AmazonSSMAgentSetup.exe"
 }
 else
 {
+    # TODO: The whole environment should be self-contained and not rely on external URLs.
+    # This URL should be replaced with a local copy of the installer.
 	$downloadfile = "https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/windows_386/AmazonSSMAgentSetup.exe"	
 }
 if ( Test-Path "$ssmregfile" )
