@@ -1,3 +1,4 @@
+// TODO: Move these constants to a centralized file or directory.
 type Mapping = {
   [k1: string]: {
     [k2: string]: any;
