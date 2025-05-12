@@ -47,6 +47,8 @@ export class WorkspacesPortfolioStack extends cdk.Stack {
     // Adds the current caller identity to the portfolio
     // This assumes that the CDK stack is being deployed
     // using an assumed role rather thant an IAM user
+    // TODO: Update to the role or group that will actually
+    // be using to the products within the portfolio
     const callerIdentityRole = iam.Role.fromRoleName(
       this,
       "rImportedRole",
