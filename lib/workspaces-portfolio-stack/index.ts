@@ -4,11 +4,35 @@ import * as servicecatalog from "aws-cdk-lib/aws-servicecatalog";
 import * as iam from "aws-cdk-lib/aws-iam";
 import { Construct } from "constructs";
 import { WorkspacesProductStack } from "../workspaces-product-stack";
-import { generateResourceName } from "../shared";
+import { generateResourceName, Globals } from "../shared";
 
 export class WorkspacesPortfolioStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
+
+    // Create the workspaces_DefaultRole if it doesn't exist
+    // https://docs.aws.amazon.com/workspaces/latest/adminguide/workspaces-access-control.html#create-default-role
+    const defaultRole = iam.Role.fromRoleName(
+      this,
+      "rWorkspacesDefaultRole",
+      "workspaces_DefaultRole"
+    );
+    if (!defaultRole) {
+      new iam.Role(this, "rWorkspacesDefaultRole", {
+        assumedBy: new iam.ServicePrincipal("workspaces.amazonaws.com"),
+        managedPolicies: [
+          iam.ManagedPolicy.fromAwsManagedPolicyName(
+            "AmazonWorkSpacesServiceAccess"
+          ),
+          iam.ManagedPolicy.fromAwsManagedPolicyName(
+            "AmazonWorkSpacesSelfServiceAccess"
+          ),
+          iam.ManagedPolicy.fromAwsManagedPolicyName(
+            "AmazonWorkSpacesPoolServiceAccess"
+          ),
+        ],
+      });
+    }
 
     const portfolio = new servicecatalog.Portfolio(
       this,
@@ -20,13 +44,17 @@ export class WorkspacesPortfolioStack extends cdk.Stack {
       }
     );
 
-    // Give the SSO Admin Permission to the portfolio
-    const adminSSORole = iam.Role.fromRoleName(
+    // Adds the current caller identity to the portfolio
+    // This assumes that the CDK stack is being deployed
+    // using an assumed role rather thant an IAM user
+    // TODO: Update to the role or group that will actually
+    // be using to the products within the portfolio
+    const callerIdentityRole = iam.Role.fromRoleName(
       this,
       "rImportedRole",
-      "AWSReservedSSO_AdministratorAccess_c3b8f24c5741a01a"
+      Globals.callerRoleName
     );
-    portfolio.giveAccessToRole(adminSSORole);
+    portfolio.giveAccessToRole(callerIdentityRole);
 
     const productStackHistory = new servicecatalog.ProductStackHistory(
       this,

@@ -13,6 +13,13 @@ export interface GlobalConfig {
   region: string;
 
   /**
+   * The name of the assumed role the current
+   * caller identity has assumed to deploy the
+   * CDK stack
+   */
+  callerRoleName: string;
+
+  /**
    * Environment (e.g. prod, dev, test, staging)
    * @default Environment.DEV
    * @see {@link Environment}
@@ -51,6 +58,10 @@ export class Globals {
 
   static get region(): string {
     return this.config.region;
+  }
+
+  static get callerRoleName(): string {
+    return this.config.callerRoleName;
   }
 
   static get environment(): string {

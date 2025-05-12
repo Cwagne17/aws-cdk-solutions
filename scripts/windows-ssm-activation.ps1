@@ -13,6 +13,7 @@ if (-not $isAdmin) {
 Import-Module AWSPowerShell
 
 #Setup Variables
+# TODO: The follow environment variables should be retrieved from SSM Parameter Store
 $api = "APIVALUE"
 $region = "REGIONID-VALUE"
 $ssmregfile = $env:ProgramData + "\Amazon\SSM\InstanceData\registration"
@@ -35,11 +36,15 @@ try {
 }
 
 if ((gwmi win32_operatingsystem | select osarchitecture).osarchitecture -eq "64-bit")
-{
+{   
+    # TODO: The whole environment should be self-contained and not rely on external URLs.
+    # This URL should be replaced with a local copy of the installer.
 	$downloadfile = "https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/windows_amd64/AmazonSSMAgentSetup.exe"
 }
 else
 {
+    # TODO: The whole environment should be self-contained and not rely on external URLs.
+    # This URL should be replaced with a local copy of the installer.
 	$downloadfile = "https://s3.amazonaws.com/ec2-downloads-windows/SSMAgent/latest/windows_386/AmazonSSMAgentSetup.exe"	
 }
 if ( Test-Path "$ssmregfile" )

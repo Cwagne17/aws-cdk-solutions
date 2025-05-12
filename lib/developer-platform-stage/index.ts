@@ -24,6 +24,7 @@ export class DeveloperPlatformStage extends cdk.Stage {
       account: props.account,
       region: props.region,
       environment: props.environment,
+      callerRoleName: props.callerRoleName,
     });
 
     const stackProps = { env: { region: Globals.region } };
