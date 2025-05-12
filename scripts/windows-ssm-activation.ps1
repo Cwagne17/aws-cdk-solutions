@@ -13,6 +13,7 @@ if (-not $isAdmin) {
 Import-Module AWSPowerShell
 
 #Setup Variables
+# TODO: The follow environment variables should be retrieved from SSM Parameter Store
 $api = "APIVALUE"
 $region = "REGIONID-VALUE"
 $ssmregfile = $env:ProgramData + "\Amazon\SSM\InstanceData\registration"
