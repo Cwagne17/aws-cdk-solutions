@@ -8,7 +8,7 @@ import {
   EnableDirectoryDataAccessCommand,
 } from "@aws-sdk/client-directory-service";
 import { getParameter } from "./shared";
-import { SSM_PARAM } from "../lib/util";
+import { SSM_PARAM } from "../lib/shared";
 
 const region = process.env.AWS_REGION ?? "us-east-1"; // Default to us-east-1 if not set
 

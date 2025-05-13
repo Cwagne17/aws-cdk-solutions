@@ -3,11 +3,11 @@ import * as cdk from "aws-cdk-lib";
 import * as servicecatalog from "aws-cdk-lib/aws-servicecatalog";
 import * as iam from "aws-cdk-lib/aws-iam";
 import { Construct } from "constructs";
-import { WorkspacesProductStack } from "./workspaces-product-stack";
-import { generateResourceName } from "../util";
+import { WorkspacesProductStack } from "../workspaces-product-stack";
+import { generateResourceName, Globals } from "../shared";
 
 export class WorkspacesPortfolioStack extends cdk.Stack {
-  constructor(scope: Construct, id: string, props: cdk.StackProps) {
+  constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
     // Create the workspaces_DefaultRole if it doesn't exist
@@ -38,26 +38,23 @@ export class WorkspacesPortfolioStack extends cdk.Stack {
       this,
       "rDeveloperEnvironmentPortfolio",
       {
-        displayName: generateResourceName({
-          usage: "developer",
-          resource: "portfolio",
-        }),
+        displayName: generateResourceName("developer-portfolio"),
         providerName: "Christopher Wagner",
         description: "TBD",
       }
     );
 
-    // Give the SSO Admin Permission to the portfolio
-    // TODO: The role name is hardcoded and dependent on the SSO instance.
-    // The function getCallerRoleName() was created and should fix this but it is async.
-    // In a future refactor of the code, the currentRoleName should be added to the global
-    // context and used here.
-    const adminSSORole = iam.Role.fromRoleName(
+    // Adds the current caller identity to the portfolio
+    // This assumes that the CDK stack is being deployed
+    // using an assumed role rather thant an IAM user
+    // TODO: Update to the role or group that will actually
+    // be using to the products within the portfolio
+    const callerIdentityRole = iam.Role.fromRoleName(
       this,
       "rImportedRole",
-      "AWSReservedSSO_AdministratorAccess_c3b8f24c5741a01a"
+      Globals.callerRoleName
     );
-    portfolio.giveAccessToRole(adminSSORole);
+    portfolio.giveAccessToRole(callerIdentityRole);
 
     const productStackHistory = new servicecatalog.ProductStackHistory(
       this,
@@ -73,10 +70,7 @@ export class WorkspacesPortfolioStack extends cdk.Stack {
       this,
       "rDeveloperWorkspaceProduct",
       {
-        productName: generateResourceName({
-          usage: "developer",
-          resource: "workspace-product",
-        }),
+        productName: generateResourceName("developer-workspace-product"),
         owner: "Christopher Wagner",
         productVersions: [productStackHistory.currentVersion()],
       }
