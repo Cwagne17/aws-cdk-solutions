@@ -1,8 +1,12 @@
 import * as cdk from "aws-cdk-lib";
+import * as lambda from "aws-cdk-lib/aws-lambda";
 import * as sfn from "aws-cdk-lib/aws-stepfunctions";
+import * as logs from "aws-cdk-lib/aws-logs";
 import * as tasks from "aws-cdk-lib/aws-stepfunctions-tasks";
 import { Construct } from "constructs";
 import { StateMachineBuilder } from "./state-machine";
+import { generateResourceName, Globals } from "../shared";
+import path = require("path");
 
 export class WorkspacesCustomImageWorkflowStack extends cdk.Stack {
   readonly stateMachine: sfn.StateMachine;
@@ -10,17 +14,49 @@ export class WorkspacesCustomImageWorkflowStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // Create Builder
+    // Define all of the steps for the workflow (no .next() chaining yet)
+
+    // Create workspace builder step
+    const lambdaFunctionName = generateResourceName("create-builder-workspace");
     const createBuilderTask = new tasks.LambdaInvoke(
       this,
       "Create Builder WorkSpace",
       {
-        lambdaFunction: lambdaFns.createBuilder,
+        lambdaFunction: new lambda.Function(this, "CreateBuilder", {
+          functionName: lambdaFunctionName,
+          description:
+            "Creates the builder WorkSpace for the custom image workflow.",
+          runtime: lambda.Runtime.PYTHON_3_9,
+          handler: "index.lambda_handler",
+          code: lambda.Code.fromAsset(
+            path.join(__dirname, "../../lambda/workspaces-create-builder")
+          ),
+          environment: {
+            Default_DirectoryId: "",
+            Default_WorkSpaceUser: "",
+            Default_BundleId: "",
+            Default_ComputeType: "",
+            Default_Protocol: "",
+            Default_RootVolumeSize: "100",
+            Default_UserVolumeSize: "50",
+            Default_SecurityGroup: "",
+            Default_ImagePrefix: "",
+            Default_APIId: "",
+            Default_NotificationARN: "",
+            Default_BundlePrefix: "",
+            Default_S3Bucket: "",
+          },
+          logGroup: new logs.LogGroup(this, "rWorkspacesBuilderLogGroup", {
+            logGroupName: `/aws/lambda/${lambdaFunctionName}`,
+            retention: logs.RetentionDays.ONE_MONTH,
+            removalPolicy: cdk.RemovalPolicy.DESTROY, // TODO: This should change based on environment
+          }),
+        }),
         outputPath: "$",
       }
     );
 
-    // Wait
+    // Create a wait state
     const waitCreate = new sfn.Wait(
       this,
       "If Not Available, Wait 3 Min (Create)",
@@ -29,7 +65,7 @@ export class WorkspacesCustomImageWorkflowStack extends cdk.Stack {
       }
     );
 
-    // Check Builder Status
+    // Check workspace builder Status
     const checkBuilderStatus = new tasks.CallAwsService(
       this,
       "Check Builder Status (Create)",
@@ -48,6 +84,7 @@ export class WorkspacesCustomImageWorkflowStack extends cdk.Stack {
       }
     );
 
+    // Start the workspace builder if not already
     const startBuilder = new tasks.CallAwsService(
       this,
       "Start Builder WorkSpace (Create)",
@@ -60,67 +97,6 @@ export class WorkspacesCustomImageWorkflowStack extends cdk.Stack {
           ),
         },
         iamResources: ["*"],
-      }
-    );
-
-    const builderAvailableChoice = new sfn.Choice(
-      this,
-      "Is Builder Available? (Create)"
-    )
-      .when(
-        sfn.Condition.stringEquals(
-          "$.ImageBuilderStatus.Workspaces[0].State",
-          "AVAILABLE"
-        ),
-        new sfn.Pass(this, "Builder Available")
-      )
-      .when(
-        sfn.Condition.stringEquals(
-          "$.ImageBuilderStatus.Workspaces[0].State",
-          "STOPPED"
-        ),
-        startBuilder
-          .next(waitCreate)
-          .next(checkBuilderStatus)
-          .next(builderAvailableChoice)
-      )
-      .otherwise(
-        waitCreate.next(checkBuilderStatus).next(builderAvailableChoice)
-      );
-
-    // Attach Security Group
-    const attachSG = new tasks.LambdaInvoke(
-      this,
-      "Attach Builder WorkSpace Security Group & Generate Temp Credentials",
-      {
-        lambdaFunction: lambdaFns.attachSecurityGroup,
-        outputPath: "$",
-      }
-    );
-
-    // Configuration Routine (Ansible replacement)
-    const configRoutine = new tasks.LambdaInvoke(
-      this,
-      "Run Configuration Routine",
-      {
-        lambdaFunction: lambdaFns.configurationRoutine,
-        outputPath: "$",
-      }
-    );
-
-    // Windows Updates
-    const windowsUpdates = new tasks.LambdaInvoke(this, "Run Windows Updates", {
-      lambdaFunction: lambdaFns.runWindowsUpdates,
-      outputPath: "$",
-    });
-
-    // Cleanup
-    const cleanup = new tasks.LambdaInvoke(
-      this,
-      "Cleanup Builder WorkSpace Temp Credentials & API Gateway",
-      {
-        lambdaFunction: lambdaFns.cleanup,
-        outputPath: "$",
       }
     );
 
@@ -166,16 +142,6 @@ export class WorkspacesCustomImageWorkflowStack extends cdk.Stack {
       resultPath: "$.ImageStatus",
     });
 
-    const imageAvailableChoice = new sfn.Choice(this, "Is Image Available?")
-      .when(
-        sfn.Condition.stringEquals(
-          "$.ImageStatus.Images[0].State",
-          "AVAILABLE"
-        ),
-        new sfn.Pass(this, "Image Available")
-      )
-      .otherwise(waitImage.next(checkImage).next(imageAvailableChoice));
-
     const createBundle = new tasks.CallAwsService(this, "Create Bundle", {
       service: "workspaces",
       action: "createWorkspaceBundle",
@@ -202,13 +168,38 @@ export class WorkspacesCustomImageWorkflowStack extends cdk.Stack {
       resultPath: "$.Bundle",
     });
 
-    const notify = new tasks.LambdaInvoke(
+    // Chain the steps together
+
+    // Construct the choices
+    const builderAvailableChoice = new sfn.Choice(
       this,
-      "Send Completion Notification",
-      {
-        lambdaFunction: lambdaFns.notify,
-        outputPath: "$",
-      }
+      "Is Builder Available? (Create)"
+    )
+      .when(
+        sfn.Condition.stringEquals(
+          "$.ImageBuilderStatus.Workspaces[0].State",
+          "AVAILABLE"
+        ),
+        new sfn.Pass(this, "Builder Available")
+      )
+      .when(
+        sfn.Condition.stringEquals(
+          "$.ImageBuilderStatus.Workspaces[0].State",
+          "STOPPED"
+        ),
+        startBuilder.next(waitCreate).next(checkBuilderStatus)
+      );
+
+    // Start by creating the builder Workspace
+    createBuilderTask.next(checkBuilderStatus);
+    checkBuilderStatus.next(builderAvailableChoice);
+
+    const imageAvailableChoice = new sfn.Choice(
+      this,
+      "Is Image Available?"
+    ).when(
+      sfn.Condition.stringEquals("$.ImageStatus.Images[0].State", "AVAILABLE"),
+      new sfn.Pass(this, "Image Available")
     );
 
     this.stateMachine = new StateMachineBuilder()
@@ -217,16 +208,11 @@ export class WorkspacesCustomImageWorkflowStack extends cdk.Stack {
         createBuilderTask,
         checkBuilderStatus,
         builderAvailableChoice,
-        attachSG,
-        configRoutine,
-        windowsUpdates,
-        cleanup,
         waitBeforeImage,
         createImage,
         checkImage,
         imageAvailableChoice,
-        createBundle,
-        notify
+        createBundle
       )
       .build(this, "rWorkspacesCustomImageStateMachine");
   }
