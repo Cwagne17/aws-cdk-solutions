@@ -5,6 +5,7 @@ import { MicrosoftActiveDirectoryStack } from "../microsoft-active-directory-sta
 import { WorkspacesPortfolioStack } from "../workspaces-portfolio-stack";
 import { WorkspaceHybridActivationStack } from "../workspaces-hybrid-activation-stack";
 import { GlobalConfig, Globals } from "../shared/globals";
+import { WorkspacesCustomImageWorkflowStack } from "../workspaces-custom-image-workflow-stack";
 
 export interface DeveloperPlatformStageProps
   extends GlobalConfig,
@@ -58,6 +59,14 @@ export class DeveloperPlatformStage extends cdk.Stage {
     workspaceActiviation.addDependency(
       vpc,
       "The workspace activation stack depends on the VPC API endpoint to exist."
+    );
+
+    const workspaceCustomImageWorkflow = new WorkspacesCustomImageWorkflowStack(
+      this,
+      "WorkspaceCustomImageWorkflow",
+      {
+        ...stackProps,
+      }
     );
   }
 }
