@@ -2,6 +2,7 @@ const arg = require("arg");
 import {
   WorkSpacesClient,
   RegisterWorkspaceDirectoryCommand,
+  DeregisterWorkspaceDirectoryCommand,
 } from "@aws-sdk/client-workspaces";
 import {
   DirectoryServiceClient,
@@ -74,7 +75,7 @@ async function deregisterWorkspaceDirectory() {
 
   try {
     await new WorkSpacesClient({ region }).send(
-      new RegisterWorkspaceDirectoryCommand({
+      new DeregisterWorkspaceDirectoryCommand({
         DirectoryId: directoryId,
       })
     );
